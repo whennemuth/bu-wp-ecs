@@ -1,0 +1,19 @@
+{
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "ecs-debug",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": [
+        "-r", "./node_modules/ts-node/register/transpile-only"
+      ],
+      "args": [
+        "${workspaceFolder}/bin/bu-wordpress-ecs.ts"
+      ], 
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}
