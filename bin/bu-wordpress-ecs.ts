@@ -1,31 +1,39 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
-import { BuWordpressEcsStack } from '../lib/bu-wordpress-ecs-stack';
-import { BuNetwork } from '../lib/bu-network';
-import * as contextFile from '../context.json';
+import * as context from '../context/_default.json';
+import { BuWordpressEcsStack as FargateStack } from '../lib/ecs-stacks/fargate-L3';
+import { BuWordpressEcsStack as CssStack } from '../lib/ecs-stacks/ec2-L2';
 
 const app = new cdk.App();
 
-new BuNetwork().getDetails().then(networkDetails => {
+app.node.setContext('stack-parms', context);
 
-  const context = Object.assign(
-    {},
-    contextFile, 
-    { VPC_ID: networkDetails.vpcId },
-    { CAMPUS_SUBNET1: networkDetails.getCampusSubnetId(0)},
-    { CAMPUS_SUBNET2: networkDetails.getCampusSubnetId(1)},
-    { DOCKER_IMAGE_V4SIG: contextFile.DOCKER_IMAGE_V4SIG || 'public.ecr.aws/bostonuniversity/aws-sigv4-proxy:latest' }
-  );
+switch(context.SCENARIO) {
 
-  app.node.setContext('env', context);
+  case 'fargate':
 
-  new BuWordpressEcsStack(app, 'S3ProxyEcsStack', {
-    stackName: 's3proxy-ecs-dev',
-    env: {
-      account: context.ACCOUNT,
-      region: context.REGION
-    }
-  });
-})
+    new FargateStack(app, 'S3ProxyFargateStack', {
+      stackName: 's3proxy-fargate-dev',
+      description: 'Fargate ECS cluster for s3proxy signing service',
+      env: {
+        account: context.ACCOUNT,
+        region: context.REGION
+      }
+    });
+    break;
 
+  case 'ec2':
+
+    new CssStack(app, 'S3ProxyEcsStack', {
+      stackName: 's3proxy-ecs-dev',
+      description: "EC2 ECS cluster for s3proxy signing service",
+      env: {
+        account: context.ACCOUNT,
+        region: context.REGION
+      }
+    });
+    break;
+}
+
+    
 

@@ -3,11 +3,21 @@ import {
   GetResourcesCommand
 } from "@aws-sdk/client-resource-groups-tagging-api";
 import { EC2Client, DescribeSubnetsCommand, DescribeSubnetsResult, Subnet } from "@aws-sdk/client-ec2";
-import * as context from '../context.json';
+import * as context from '../context-css.json';
 
 /**
  * This class represents the pre-existing BU common security services accounts (prod, nonprod, etc) 
  * vpc and subnets, for which lookup methods are provided.
+ * Place the following in you app file (ie: bin/bu-wordpress-stack.ts) like this:
+ * 
+ *   import { BuNetwork } from '../lib/bu-network';
+ *
+ *   new BuNetwork().getDetails().then(networkDetails => {
+ *      // Code that creates a stack
+ *      // console.log(networkDetails.vpcId)
+ *      // console.log(networkDetails.getCampusSubnetId(0))
+ *   } 
+ *
  */
 export class BuNetwork {
 

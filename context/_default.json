@@ -1,9 +1,16 @@
 {
+  "SCENARIO": "ec2",
   "ACCOUNT": "770203350335",
   "REGION": "us-east-1",
+  "VPC_ID": "vpc-0290de1785982a52f",
+  "CAMPUS_SUBNET1": "subnet-06edbf07b7e07d73c",
+  "CAMPUS_SUBNET2": "subnet-0032f03a478ee868b",
   "DOCKER_IMAGE_V4SIG": "public.ecr.aws/bostonuniversity/aws-sigv4-proxy:latest",
   "BUCKET_USER_SECRET_NAME": "wordpress-protected-s3-assets-jaydub-user/AccessKey",
   "OLAP": "wordpress-protected-s3-assets-jaydub-olap",
+  "HOSTED_ZONE": "kualitest.research.bu.edu",
+  "RECORD_NAME": "s3proxy.kualitest.research.bu.edu",
+  "CERTIFICATE_ARN": "arn:aws:acm:us-east-1:770203350335:certificate/117fad49-d620-4bd3-a624-879f3fbd7ab7",
   "TAG_SERVICE": "websites",
   "TAG_FUNCTION": "wordpress",
   "TAG_LANDSCAPE": "devl"
