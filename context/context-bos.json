@@ -2,7 +2,7 @@
   "SCENARIO": "fargate",
   "ACCOUNT": "037860335094",
   "REGION": "us-east-1",
-  "DOCKER_IMAGE_V4SIG": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
+  "DOCKER_IMAGE_SIGV4": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
   "BUCKET_USER_SECRET_NAME": "wordpress-protected-s3-assets-jaydub-user/AccessKey",
   "OLAP": "wordpress-protected-s3-assets-jaydub-olap",
   "TAG_SERVICE": "websites",

@@ -5,7 +5,7 @@
   "VPC_ID": "vpc-0290de1785982a52f",
   "CAMPUS_SUBNET1": "subnet-06edbf07b7e07d73c",
   "CAMPUS_SUBNET2": "subnet-0032f03a478ee868b",
-  "DOCKER_IMAGE_V4SIG": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
+  "DOCKER_IMAGE_SIGV4": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
   "BUCKET_USER_SECRET_NAME": "wordpress-protected-s3-assets-jaydub-user/AccessKey",
   "OLAP": "wordpress-protected-s3-assets-jaydub-olap",
   "HOSTED_ZONE": "kualitest.research.bu.edu",

@@ -194,7 +194,7 @@ export class BuWordpressEcsStack extends Stack {
     const secretForBucketUser: secretsmgr.ISecret = secretsmgr.Secret.fromSecretNameV2(stack, 'bucket-secret', stack.context.BUCKET_USER_SECRET_NAME);
     const host=`${stack.context.OLAP}-${stack.context.ACCOUNT}.${olap_service}.${stack.context.REGION}.amazonaws.com`;
     stack.taskdef.addContainer(`${sigv4_prefix}`, {
-      image: ecs.ContainerImage.fromRegistry(stack.context.DOCKER_IMAGE_V4SIG),
+      image: ecs.ContainerImage.fromRegistry(stack.context.DOCKER_IMAGE_SIGV4),
       // memoryLimitMiB: 512,
       memoryReservationMiB: 256,
       containerName: `${sigv4_prefix}`,
