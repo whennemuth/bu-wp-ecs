@@ -4,6 +4,7 @@ import * as ec2  from "aws-cdk-lib/aws-ec2";
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as secretsmgr from 'aws-cdk-lib/aws-secretsmanager';
 import * as autoscaling from 'aws-cdk-lib/aws-autoscaling';
+import * as appscaling from 'aws-cdk-lib/aws-applicationautoscaling';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -14,6 +15,7 @@ const prefix: string = 's3proxy';
 const sigv4_prefix: string = 's3proxy';
 const sigv4_host_port = 8080;
 const sigv4_container_port = sigv4_host_port;
+const sigv4_healthcheck = '/s3proxy-healthcheck';
 const olap_service: string = 's3-object-lambda';
 
 export class BuWordpressEcsStack extends Stack {
@@ -27,8 +29,8 @@ export class BuWordpressEcsStack extends Stack {
   private capacityProvider: ecs.AsgCapacityProvider;
   private taskdef: ecs.Ec2TaskDefinition;
   private alb: elbv2.ApplicationLoadBalancer;
-  private listener_sigv4: elbv2.ApplicationListener;
-  private targetGroup: elbv2.ApplicationTargetGroup;
+  private sslListener: elbv2.ApplicationListener;
+  private s3proxyTargetGroup: elbv2.ApplicationTargetGroup;
   private s3ProxyService: ecs.Ec2Service;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -51,14 +53,13 @@ export class BuWordpressEcsStack extends Stack {
 
     stack.setAutoscalingGroup(stack);
 
-    stack.setCapacityProvider(stack);
-
-    // https://repost.aws/knowledge-center/ecs-capacity-provider-error
-    stack.cluster.addAsgCapacityProvider(stack.capacityProvider, { canContainersAccessInstanceRole: true });
+    stack.addCapacityProviderToCluster(stack);
 
     stack.setTaskDef(stack);
 
     stack.setEc2Service(stack);
+
+    stack.setExtraEc2ServiceScaling(stack);
 
     stack.setLoadBalancer(stack);
 
@@ -83,7 +84,7 @@ export class BuWordpressEcsStack extends Stack {
     stack.cluster = new ecs.Cluster(stack, `${prefix}-cluster`, {
       vpc: stack.vpc, 
       containerInsights: true,
-      clusterName: `${prefix}-cluster`,      
+      clusterName: `${prefix}-cluster` 
     });
   }
 
@@ -124,26 +125,33 @@ export class BuWordpressEcsStack extends Stack {
     };
   }
 
+  /**
+   * Configure the auto scaling group (asg).
+   * @param stack 
+   */
   private setAutoscalingGroup(stack: BuWordpressEcsStack) {
     stack.asg = new autoscaling.AutoScalingGroup(stack, `${prefix}-asg`, {
       vpc: stack.vpc,
       vpcSubnets: stack.subsln,
-      instanceType: new ec2.InstanceType('t3.small'),
+      instanceType: new ec2.InstanceType('t3.micro'),
       machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
-      desiredCapacity: 1,
+      desiredCapacity: 2,
       minCapacity: 1,
-      maxCapacity: 2,
+      maxCapacity: 3,
+      cooldown: Duration.minutes(2),
+      instanceMonitoring: autoscaling.Monitoring.DETAILED,
       newInstancesProtectedFromScaleIn: false,
       allowAllOutbound: true,
-
       autoScalingGroupName: `${prefix}-asg`,
       securityGroup: stack.securityGroups.ec2,
+      defaultInstanceWarmup: Duration.seconds(30),
       updatePolicy: autoscaling.UpdatePolicy.rollingUpdate(
         {
           maxBatchSize: 1,
           minInstancesInService: 1,
           minSuccessPercentage: 100,
-          pauseTime: Duration.minutes(5),
+          waitOnResourceSignals: false,
+          pauseTime: Duration.seconds(15), // https://repost.aws/knowledge-center/auto-scaling-group-rolling-updates
           suspendProcesses: [
             autoscaling.ScalingProcess.AZ_REBALANCE,
             autoscaling.ScalingProcess.HEALTH_CHECK,
@@ -151,30 +159,51 @@ export class BuWordpressEcsStack extends Stack {
             autoscaling.ScalingProcess.ALARM_NOTIFICATION,
             autoscaling.ScalingProcess.REPLACE_UNHEALTHY
           ],
-          waitOnResourceSignals: false,
         }
-      )
+      ),
     });
   }
 
-  private setCapacityProvider(stack: BuWordpressEcsStack) {
+  /**
+   * The asg will be associated with a capacity provider. This means that autoscaling at the cluster level is 
+   * abstracted away and affected obliquely by ECS as a function of scaling events that are configured at the service level.
+   * If this is combined with enabling managed scaling on the capacity provider, alarms or scaling policies are 
+   * automatically created for you. "Just concentrating on tasks" like this is covered in the following references:
+   * 
+   * https://docs.aws.amazon.com/AmazonECS/latest/developerguide/cluster-auto-scaling.html
+   * and...
+   * https://aws.amazon.com/blogs/containers/deep-dive-on-amazon-ecs-cluster-auto-scaling/
+   * @param stack 
+   */
+  private addCapacityProviderToCluster(stack: BuWordpressEcsStack) {
     stack.capacityProvider = new ecs.AsgCapacityProvider(stack, `${prefix}-asg-capacity-provider`, {
       autoScalingGroup: stack.asg,
-      enableManagedTerminationProtection: false            
+      enableManagedTerminationProtection: false,
+      enableManagedScaling: true,
+      machineImageType: ecs.MachineImageType.AMAZON_LINUX_2,
     });
+    // https://repost.aws/knowledge-center/ecs-capacity-provider-error
+    stack.cluster.addAsgCapacityProvider(stack.capacityProvider, { canContainersAccessInstanceRole: true });
   }
 
   private setTaskDef(stack: BuWordpressEcsStack) {
     stack.taskdef = new ecs.Ec2TaskDefinition(stack, `${sigv4_prefix}-taskdef`, {
-      family: `${sigv4_prefix}`,         
+      family: `${sigv4_prefix}`   
     });
     
     const secretForBucketUser: secretsmgr.ISecret = secretsmgr.Secret.fromSecretNameV2(stack, 'bucket-secret', stack.context.BUCKET_USER_SECRET_NAME);
     const host=`${stack.context.OLAP}-${stack.context.ACCOUNT}.${olap_service}.${stack.context.REGION}.amazonaws.com`;
     stack.taskdef.addContainer(`${sigv4_prefix}`, {
       image: ecs.ContainerImage.fromRegistry(stack.context.DOCKER_IMAGE_V4SIG),
-      memoryLimitMiB: 1024,
+      // memoryLimitMiB: 512,
+      memoryReservationMiB: 256,
       containerName: `${sigv4_prefix}`,
+      healthCheck: {
+        command: [ 'CMD-SHELL', 'echo hello' ],
+        interval: Duration.seconds(10),
+        startPeriod: Duration.seconds(5),
+        retries: 3
+      },
       command: [
         '-v',
         '--name', olap_service,
@@ -196,7 +225,7 @@ export class BuWordpressEcsStack extends Stack {
         streamPrefix: `${sigv4_prefix}`
       }),
       environment: {
-        healthcheck_path: '/files/_healthcheck_'
+        healthcheck_path: sigv4_healthcheck
       },
       secrets: {
         AWS_ACCESS_KEY_ID: ecs.Secret.fromSecretsManager(secretForBucketUser, 'aws_access_key_id'),
@@ -206,17 +235,26 @@ export class BuWordpressEcsStack extends Stack {
     });
   }
 
+  /**
+   * Create the ECS service.
+   * NOTE: The spread placement strategy is used in order to maximize availability.
+   * However, if one of the binpack variants were to be used, this would most efficiently place tasks based on 
+   * resource consumption and potentially reduce the number of container instances that would need to be in service (cost-optimization).
+   * @param stack 
+   */
   private setEc2Service(stack: BuWordpressEcsStack) {
     stack.s3ProxyService = new ecs.Ec2Service(stack, `${prefix}-ec2-service`, {
       cluster: stack.cluster, 
       taskDefinition: stack.taskdef,      
-      desiredCount: 1,
+      desiredCount: 2,
       minHealthyPercent: 50,
-      maxHealthyPercent: 100,
+      maxHealthyPercent: 200,
       circuitBreaker: { rollback: true },
+      enableECSManagedTags: true,
+      propagateTags: ecs.PropagatedTagSource.TASK_DEFINITION,
       deploymentController: {
         type: ecs.DeploymentControllerType.ECS
-      }, 
+      },
       placementStrategies: [
         ecs.PlacementStrategy.spreadAcrossInstances()
       ],
@@ -227,16 +265,53 @@ export class BuWordpressEcsStack extends Stack {
           weight: 1
         }
       ],
+    });
+  }
 
+  /**
+   * Set the conditions on which the number of tasks for the service is 
+   * increased or decreased based on resource consumption levels and scheduling
+   * @param stack 
+   */
+  private setExtraEc2ServiceScaling(stack: BuWordpressEcsStack) {
+    const stc: ecs.ScalableTaskCount = stack.s3ProxyService.autoScaleTaskCount({
+      minCapacity: 2,
+      maxCapacity: 10
+    });
+
+    stc.scaleOnCpuUtilization('CpuScaling', {
+      targetUtilizationPercent: 80,
+      scaleInCooldown: Duration.minutes(1),
+      scaleOutCooldown: Duration.minutes(1),      
+    });
+
+    stc.scaleOnMemoryUtilization('MemoryScaling', {
+      targetUtilizationPercent: 90,
+      scaleInCooldown: Duration.minutes(1),
+      scaleOutCooldown: Duration.minutes(1),      
+    });
+
+    /**
+     * Scheduled scaling may not be necessary if the metrics-based scaling scales down to the same capacity anyway due to the
+     * reduced load during those off-peak times. This is more likely to be the case the higher one sets the target utilization 
+     * percentages, limiting excess capacity and packing more "tightly".
+     */
+    stc.scaleOnSchedule('WorkDayMorningScaleUp', {
+      schedule: appscaling.Schedule.cron({ hour: '8', minute: '0', weekDay: '1-5' }),
+      minCapacity: 2
+    });
+    stc.scaleOnSchedule('WorkDayEveningScaleDown', {
+      schedule: appscaling.Schedule.cron({ hour: '20', minute: '0', weekDay: '1-5' }),
+      minCapacity: 1
     });
   }
 
   private setLoadBalancer(stack: BuWordpressEcsStack) {
     const bucket: s3.IBucket = new s3.Bucket(stack, `${prefix}-alb-access-logs`, {
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      encryption: s3.BucketEncryption.S3_MANAGED,
       removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED
     });
 
     stack.alb = new elbv2.ApplicationLoadBalancer(stack, `${prefix}-alb`, {
@@ -270,20 +345,34 @@ export class BuWordpressEcsStack extends Stack {
       listener_certificates.push({ certificateArn: stack.context.CERTIFICATE_ARN });
     }
 
-    stack.listener_sigv4 = stack.alb.addListener(`${sigv4_prefix}-listener'`, { 
+    stack.sslListener = stack.alb.addListener(`${sigv4_prefix}-listener'`, { 
       port: listener_port,
       certificates: listener_certificates,
+      // Do this default action if none of the target group conditions are met.
+      defaultAction: elbv2.ListenerAction.fixedResponse(404, {
+        contentType: 'text/plain',
+        messageBody: '404 Error: Page not found'
+      }),
       open: false
     });
 
-    // Attach the service to alb
-    stack.targetGroup = stack.listener_sigv4.addTargets(`${sigv4_prefix}-tg`, {
+    // Attach the s3proxy service to alb
+    stack.s3proxyTargetGroup = stack.sslListener.addTargets(`${sigv4_prefix}-tg`, {
       port: sigv4_host_port,
-      targets: [ stack.asg ]
+      targets: [ stack.asg ],
+      loadBalancingAlgorithmType: elbv2.TargetGroupLoadBalancingAlgorithmType.LEAST_OUTSTANDING_REQUESTS,
+      priority: 1,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns([
+          '/*/files/*',
+          '/*/*/files/*',
+          sigv4_healthcheck
+        ])
+      ]
     });
     
-    stack.targetGroup.configureHealthCheck({
-      path: '/files/_healthcheck_',
+    stack.s3proxyTargetGroup.configureHealthCheck({
+      path: sigv4_healthcheck,
       port: `${sigv4_container_port}`,
       healthyHttpCodes: '200-299',
       healthyThresholdCount: 3,

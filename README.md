@@ -44,10 +44,14 @@ Currently, this deployment sets up an [ecs](https://docs.aws.amazon.com/AmazonEC
    - TAG_FUNCTION: wordpress
    - TAG_LANDSCAPE: devl
 
+## Notes
+
+[Autoscaling](./README-autoscaling.md)
+
 *Commands scratchpad (work into documentation properly later)*:
 
 ```
-cdk synth --profile infnprd &> cdk.out/BuWordpressEcsStack.template.yaml
+cdk synth --profile infnprd &> cdk.out/S3ProxyEcsStack.template.yaml
 
 cdk deploy --profile infnprd --no-rollback
 
