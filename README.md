@@ -22,47 +22,31 @@ Currently, this deployment sets up an [ecs](https://docs.aws.amazon.com/AmazonEC
 ## Steps
 
 1. Create a `./context/_default.json` file.
-   This file contains all parameters that the cdk will use when generating the cloudformation template it later deploys. These parameters correspond to something one might otherwise use as values being supplied straight to cloudformation if it were being invoked directly, but they appear "hard-coded" in the stack template. [From CDK docs on parameters](https://docs.aws.amazon.com/cdk/v2/guide/parameters.html):
+   This file contains all parameters that the cdk will use when generating the Cloudformation template it later deploys. These parameters correspond to something one might otherwise use as values being supplied straight to Cloudformation if it were being invoked directly, but they appear "hard-coded" in the stack template. [From CDK docs on parameters](https://docs.aws.amazon.com/cdk/v2/guide/parameters.html):
 
    > *In general, we recommend against using AWS CloudFormation parameters with the AWS CDK. The usual ways to pass values into AWS CDK apps are [context values](https://docs.aws.amazon.com/cdk/v2/guide/context.html) and environment variables. Because they are not available at synthesis time, parameter values cannot be easily used for flow control and other purposes in your CDK app.*
 
-   There is an example `./context/_default.json` file already that requires modification before running any cdk commands:
+   Currently, there are two scenarios for two types of stacks, each with their own set of parameters.
+   The following are links for details of each scenario with explanations of the parameters. 
+   
+   - [EC2 on ECS Stack](./README-parms-ec2.md)
+   - [Fargate Stack](README-parms-fargate.md)
+   
+2. [OPTIONAL] Run the CDK command to generate the cloudformation template that will be used to create the stack:
 
    ```
-   {
-     "SCENARIO": "ec2",
-     "ACCOUNT": "770203350335",
-     "REGION": "us-east-1",
-     "VPC_ID": "vpc-0290de1785982a52f",
-     "CAMPUS_SUBNET1": "subnet-06edbf07b7e07d73c",
-     "CAMPUS_SUBNET2": "subnet-0032f03a478ee868b",
-     "DOCKER_IMAGE_SIGV4": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
-     "BUCKET_USER_SECRET_NAME": "wordpress-protected-s3-assets-jaydub-user/AccessKey",
-     "OLAP": "wordpress-protected-s3-assets-jaydub-olap",
-     "HOSTED_ZONE": "kualitest.research.bu.edu",
-     "RECORD_NAME": "s3proxy.kualitest.research.bu.edu",
-     "CERTIFICATE_ARN": "arn:aws:acm:us-east-1:770203350335:certificate/117fad49-d620-4bd3-a624-879f3fbd7ab7",
-     "TAG_SERVICE": "websites",
-     "TAG_FUNCTION": "wordpress",
-     "TAG_LANDSCAPE": "devl"
-   }
+   cdk synth --profile infnprd &> cdk.out/S3ProxyEcsStack.template.yaml
    ```
+
+   *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a yaml file alongside the json file.*
+
+3. Run the CDK command to create the stack:
+
+   ```
+   cdk deploy --profile infnprd --no-rollback
+   ```
+
    
-   - SCENARIO: "ec2" or "fargate". 
-   - ACCOUNT: The number of the aws account being deployed to.
-   - REGION: The region being deployed to.
-   - VPC_ID: The ID of the existing vpc to deploy into in a CSS account
-   - CAMPUS_SUBNET1: The first of two "campus" subnets to restrict cluster capacity to in a CSS account
-   - CAMPUS_SUBNET2: The second of two "campus" subnets to restrict cluster capacity to in a CSS account
-   - DOCKER_IMAGE_SIGV4: The docker tag for the customized s3proxy docker container in a public BU ECR
-   - BUCKET_USER_SECRET_NAME: The name of a secrets manager secret for the credentials of a prexisting user that has a role sufficient for s3 bucket access needed by the s3proxy task.
-   - OLAP: The name of the object lambda access point targeted by s3proxy container.
-   - HOSTED_ZONE: The name of a prexisting hosted zone for which a new "A" record will created to route traffic to the ALB created.
-   - RECORD_NAME: The name of the record to be added to the hosted zone. This will be the hosted zone root name prefixed with a value for a subdomain.
-   - CERTIFICATE_ARN: The arn of the prexisting ACM certificate that corresponds to hosted zone being used.
-   - TAG_SERVICE: Standard tagging requirement for the service the app is part of
-   - TAG_FUNCTION: Standard tagging requirement for the function the app performs
-   - TAG_LANDSCAPE: Standard tagging requirement for identifying the environment the deployment serves for.
 
 ## Notes
 
@@ -71,10 +55,6 @@ Currently, this deployment sets up an [ecs](https://docs.aws.amazon.com/AmazonEC
 *Commands scratchpad (work into documentation properly later)*:
 
 ```
-cdk synth --profile infnprd &> cdk.out/S3ProxyEcsStack.template.yaml
-
-cdk deploy --profile infnprd --no-rollback
-
 MSYS_NO_PATHCONV=1 && \
 docker run --rm -ti \
   -e 'AWS_ACCESS_KEY_ID=[key]' \
