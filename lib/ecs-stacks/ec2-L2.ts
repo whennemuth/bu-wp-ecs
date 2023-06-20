@@ -178,6 +178,7 @@ export class BuWordpressEcsStack extends Stack {
   private addCapacityProviderToCluster(stack: BuWordpressEcsStack) {
     stack.capacityProvider = new ecs.AsgCapacityProvider(stack, `${prefix}-asg-capacity-provider`, {
       autoScalingGroup: stack.asg,
+      capacityProviderName: `${prefix}-ecs-managed-auto-scaling-policy-capacity-provider`,
       enableManagedTerminationProtection: false,
       enableManagedScaling: true,
       machineImageType: ecs.MachineImageType.AMAZON_LINUX_2,
@@ -275,31 +276,39 @@ export class BuWordpressEcsStack extends Stack {
    */
   private setExtraEc2ServiceScaling(stack: BuWordpressEcsStack) {
     const stc: ecs.ScalableTaskCount = stack.s3ProxyService.autoScaleTaskCount({
+      // The lower boundary to which service auto scaling can adjust the desired count of the service.
       minCapacity: 2,
+      // The upper boundary to which service auto scaling can adjust the desired count of the service.
       maxCapacity: 10
     });
 
+    // Target Tracking
     stc.scaleOnCpuUtilization('CpuScaling', {
-      targetUtilizationPercent: 80,
+      targetUtilizationPercent: 50,
       scaleInCooldown: Duration.minutes(1),
       scaleOutCooldown: Duration.minutes(1),      
     });
 
     stc.scaleOnMemoryUtilization('MemoryScaling', {
-      targetUtilizationPercent: 90,
+      targetUtilizationPercent: 50,
       scaleInCooldown: Duration.minutes(1),
       scaleOutCooldown: Duration.minutes(1),      
     });
 
     /**
-     * Scheduled scaling may not be necessary if the metrics-based scaling scales down to the same capacity anyway due to the
-     * reduced load during those off-peak times. This is more likely to be the case the higher one sets the target utilization 
-     * percentages, limiting excess capacity and packing more "tightly".
+     * Scheduled adjustment to the minimum number of tasks required.
+     * This will effectively neutralize any target tracking scaling that attempts to reduce the task count
+     * down to 1 task by maintaining a lower limit of 2.  
      */
     stc.scaleOnSchedule('WorkDayMorningScaleUp', {
       schedule: appscaling.Schedule.cron({ hour: '8', minute: '0', weekDay: '1-5' }),
       minCapacity: 2
     });
+    /**
+     * Scheduled adjustment to the minimum number of tasks required.
+     * This will effectively enable any target tracking scaling that wants to reduce the task count
+     * down to 1 task.  
+     */
     stc.scaleOnSchedule('WorkDayEveningScaleDown', {
       schedule: appscaling.Schedule.cron({ hour: '20', minute: '0', weekDay: '1-5' }),
       minCapacity: 1
