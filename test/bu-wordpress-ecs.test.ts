@@ -5,7 +5,7 @@ import * as BuWordpressEcs from '../lib/bu-wordpress-ecs-stack';
 test('SQS Queue and SNS Topic Created', () => {
   const app = new cdk.App();
   // WHEN
-  const stack = new BuWordpressEcs.BuWordpressEcsStack(app, 'MyTestStack');
+  const stack = new BuWordpressEcs.BuWordpressEcsConstruct(app, 'MyTestStack');
   // THEN
 
   const template = Template.fromStack(stack);

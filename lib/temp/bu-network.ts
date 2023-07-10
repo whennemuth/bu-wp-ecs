@@ -3,7 +3,6 @@ import {
   GetResourcesCommand
 } from "@aws-sdk/client-resource-groups-tagging-api";
 import { EC2Client, DescribeSubnetsCommand, DescribeSubnetsResult, Subnet } from "@aws-sdk/client-ec2";
-import * as context from '../context-css.json';
 
 /**
  * This class represents the pre-existing BU common security services accounts (prod, nonprod, etc) 

@@ -10,6 +10,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import { LoadBalancerTarget } from 'aws-cdk-lib/aws-route53-targets';
+import { IContext } from '../../contexts/IContext';
 
 const prefix: string = 's3proxy';
 const sigv4_prefix: string = 's3proxy';
@@ -18,9 +19,9 @@ const sigv4_container_port = sigv4_host_port;
 const sigv4_healthcheck = '/s3proxy-healthcheck';
 const olap_service: string = 's3-object-lambda';
 
-export class BuWordpressEcsStack extends Stack {
+export class BuS3ProxyEc2Stack extends Stack {
 
-  private context: any;
+  private context: IContext;
   private vpc: ec2.IVpc;
   private subsln: ec2.SubnetSelection;
   private cluster: ecs.Cluster;
@@ -37,7 +38,7 @@ export class BuWordpressEcsStack extends Stack {
 
     super(scope, id, props);
 
-    const stack: BuWordpressEcsStack = this;
+    const stack: BuS3ProxyEc2Stack = this;
 
     stack.context = scope.node.getContext('stack-parms');
 
@@ -66,21 +67,21 @@ export class BuWordpressEcsStack extends Stack {
     stack.configureLoadBalancer(stack);
   }
 
-  private useSSL(stack: BuWordpressEcsStack): boolean {
-    if( ! stack.context.HOSTED_ZONE ) return false;
-    if( ! stack.context.RECORD_NAME ) return false;
-    if( ! stack.context.CERTIFICATE_ARN ) return false;
+  private useSSL(stack: BuS3ProxyEc2Stack): boolean {
+    if( ! stack.context.DNS.hostedZone ) return false;
+    if( ! stack.context.S3PROXY.recordName ) return false;
+    if( ! stack.context.DNS.certificateARN ) return false;
     return true;
   }
 
-  private setStackTags(stack: BuWordpressEcsStack) {
+  private setStackTags(stack: BuS3ProxyEc2Stack) {
     // Set the tags for the stack
-    stack.tags.setTag('Service', stack.context.TAG_SERVICE);
-    stack.tags.setTag('Function', stack.context.TAG_FUNCTION);
-    stack.tags.setTag('Landscape', stack.context.TAG_LANDSCAPE);  
+    stack.tags.setTag('Service', stack.context.TAGS.Service);
+    stack.tags.setTag('Function', stack.context.TAGS.Function);
+    stack.tags.setTag('Landscape', stack.context.TAGS.Landscape);  
   }
 
-  private setCluster(stack: BuWordpressEcsStack) {
+  private setCluster(stack: BuS3ProxyEc2Stack) {
     stack.cluster = new ecs.Cluster(stack, `${prefix}-cluster`, {
       vpc: stack.vpc, 
       containerInsights: true,
@@ -88,16 +89,16 @@ export class BuWordpressEcsStack extends Stack {
     });
   }
 
-  private setSubnets(stack: BuWordpressEcsStack) {
+  private setSubnets(stack: BuS3ProxyEc2Stack) {
     stack.subsln = new class subsln implements ec2.SubnetSelection {
       subnets = [
-        ec2.Subnet.fromSubnetId(stack, 'subnet1', stack.context.CAMPUS_SUBNET1),
-        ec2.Subnet.fromSubnetId(stack, 'subnet2', stack.context.CAMPUS_SUBNET2)
+        ec2.Subnet.fromSubnetId(stack, 'subnet1', stack.context.SUBNETS.campus1),
+        ec2.Subnet.fromSubnetId(stack, 'subnet2', stack.context.SUBNETS.campus2)
       ];
     }
   }
 
-  private setSecurityGroups(stack: BuWordpressEcsStack) {
+  private setSecurityGroups(stack: BuS3ProxyEc2Stack) {
     const alb_sg = new ec2.SecurityGroup(stack, `${prefix}-alb-sg`, {
       vpc: stack.vpc, 
       allowAllOutbound: true
@@ -105,13 +106,13 @@ export class BuWordpressEcsStack extends Stack {
     const ingressPort = this.useSSL(stack) ? 443 : sigv4_host_port;
 
     // Add campus vpn subnet ingress rules
-    alb_sg.addIngressRule(ec2.Peer.ipv4('168.122.81.0/24'), ec2.Port.tcp(ingressPort));
-    alb_sg.addIngressRule(ec2.Peer.ipv4('168.122.82.0/23'), ec2.Port.tcp(ingressPort));
-    alb_sg.addIngressRule(ec2.Peer.ipv4('168.122.76.0/24'), ec2.Port.tcp(ingressPort));
-    alb_sg.addIngressRule(ec2.Peer.ipv4('168.122.68.0/24'), ec2.Port.tcp(ingressPort));
-    alb_sg.addIngressRule(ec2.Peer.ipv4('168.122.69.0/24'), ec2.Port.tcp(ingressPort));
+    alb_sg.addIngressRule(ec2.Peer.ipv4(stack.context.CIDRS.campus1), ec2.Port.tcp(ingressPort));
+    alb_sg.addIngressRule(ec2.Peer.ipv4(stack.context.CIDRS.campus2), ec2.Port.tcp(ingressPort));
+    alb_sg.addIngressRule(ec2.Peer.ipv4(stack.context.CIDRS.campus3), ec2.Port.tcp(ingressPort));
+    alb_sg.addIngressRule(ec2.Peer.ipv4(stack.context.CIDRS.campus4), ec2.Port.tcp(ingressPort));
+    alb_sg.addIngressRule(ec2.Peer.ipv4(stack.context.CIDRS.campus5), ec2.Port.tcp(ingressPort));
     // Add dv02 ingress rule
-    alb_sg.addIngressRule(ec2.Peer.ipv4('10.231.32.200/32'), ec2.Port.tcp(ingressPort));
+    alb_sg.addIngressRule(ec2.Peer.ipv4(stack.context.CIDRS['wp-app-dv02']), ec2.Port.tcp(ingressPort));
 
     const ec2_sg = new ec2.SecurityGroup(stack, `${prefix}-ec2-sg`, {
       vpc: stack.vpc,
@@ -129,7 +130,7 @@ export class BuWordpressEcsStack extends Stack {
    * Configure the auto scaling group (asg).
    * @param stack 
    */
-  private setAutoscalingGroup(stack: BuWordpressEcsStack) {
+  private setAutoscalingGroup(stack: BuS3ProxyEc2Stack) {
     stack.asg = new autoscaling.AutoScalingGroup(stack, `${prefix}-asg`, {
       vpc: stack.vpc,
       vpcSubnets: stack.subsln,
@@ -175,7 +176,7 @@ export class BuWordpressEcsStack extends Stack {
    * https://aws.amazon.com/blogs/containers/deep-dive-on-amazon-ecs-cluster-auto-scaling/
    * @param stack 
    */
-  private addCapacityProviderToCluster(stack: BuWordpressEcsStack) {
+  private addCapacityProviderToCluster(stack: BuS3ProxyEc2Stack) {
     stack.capacityProvider = new ecs.AsgCapacityProvider(stack, `${prefix}-asg-capacity-provider`, {
       autoScalingGroup: stack.asg,
       capacityProviderName: `${prefix}-ecs-managed-auto-scaling-policy-capacity-provider`,
@@ -187,15 +188,15 @@ export class BuWordpressEcsStack extends Stack {
     stack.cluster.addAsgCapacityProvider(stack.capacityProvider, { canContainersAccessInstanceRole: true });
   }
 
-  private setTaskDef(stack: BuWordpressEcsStack) {
+  private setTaskDef(stack: BuS3ProxyEc2Stack) {
     stack.taskdef = new ecs.Ec2TaskDefinition(stack, `${sigv4_prefix}-taskdef`, {
-      family: `${sigv4_prefix}`   
+      family: `${sigv4_prefix}`,
     });
     
-    const secretForBucketUser: secretsmgr.ISecret = secretsmgr.Secret.fromSecretNameV2(stack, 'bucket-secret', stack.context.BUCKET_USER_SECRET_NAME);
-    const host=`${stack.context.OLAP}-${stack.context.ACCOUNT}.${olap_service}.${stack.context.REGION}.amazonaws.com`;
+    const secretForBucketUser: secretsmgr.ISecret = secretsmgr.Secret.fromSecretNameV2(stack, 'bucket-secret', stack.context.S3PROXY.bucketUserSecretName);
+    const host=`${stack.context.S3PROXY.OLAP}-${stack.context.ACCOUNT}.${olap_service}.${stack.context.REGION}.amazonaws.com`;
     stack.taskdef.addContainer(`${sigv4_prefix}`, {
-      image: ecs.ContainerImage.fromRegistry(stack.context.DOCKER_IMAGE_SIGV4),
+      image: ecs.ContainerImage.fromRegistry(stack.context.S3PROXY.dockerImage),
       // memoryLimitMiB: 512,
       memoryReservationMiB: 256,
       containerName: `${sigv4_prefix}`,
@@ -212,13 +213,11 @@ export class BuWordpressEcsStack extends Stack {
         '--region', stack.context.REGION,
         '--no-verify-ssl'
       ],
-      portMappings: [
-        {
-          containerPort: sigv4_container_port,
-          hostPort: sigv4_host_port,
-          protocol: ecs.Protocol.TCP
-        },
-      ],
+      portMappings: [{
+        containerPort: sigv4_container_port,
+        hostPort: sigv4_host_port,
+        protocol: ecs.Protocol.TCP
+      }],
       logging: ecs.LogDriver.awsLogs({ 
         logGroup: new logs.LogGroup(stack, `${sigv4_prefix}-logs`, {
           removalPolicy: RemovalPolicy.DESTROY
@@ -243,7 +242,7 @@ export class BuWordpressEcsStack extends Stack {
    * resource consumption and potentially reduce the number of container instances that would need to be in service (cost-optimization).
    * @param stack 
    */
-  private setEc2Service(stack: BuWordpressEcsStack) {
+  private setEc2Service(stack: BuS3ProxyEc2Stack) {
     stack.s3ProxyService = new ecs.Ec2Service(stack, `${prefix}-ec2-service`, {
       cluster: stack.cluster, 
       taskDefinition: stack.taskdef,      
@@ -253,9 +252,6 @@ export class BuWordpressEcsStack extends Stack {
       circuitBreaker: { rollback: true },
       enableECSManagedTags: true,
       propagateTags: ecs.PropagatedTagSource.TASK_DEFINITION,
-      deploymentController: {
-        type: ecs.DeploymentControllerType.ECS
-      },
       placementStrategies: [
         ecs.PlacementStrategy.spreadAcrossInstances()
       ],
@@ -274,7 +270,7 @@ export class BuWordpressEcsStack extends Stack {
    * increased or decreased based on resource consumption levels and scheduling
    * @param stack 
    */
-  private setExtraEc2ServiceScaling(stack: BuWordpressEcsStack) {
+  private setExtraEc2ServiceScaling(stack: BuS3ProxyEc2Stack) {
     const stc: ecs.ScalableTaskCount = stack.s3ProxyService.autoScaleTaskCount({
       // The lower boundary to which service auto scaling can adjust the desired count of the service.
       minCapacity: 2,
@@ -315,7 +311,7 @@ export class BuWordpressEcsStack extends Stack {
     });
   }
 
-  private setLoadBalancer(stack: BuWordpressEcsStack) {
+  private setLoadBalancer(stack: BuS3ProxyEc2Stack) {
     const bucket: s3.IBucket = new s3.Bucket(stack, `${prefix}-alb-access-logs`, {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
@@ -337,21 +333,21 @@ export class BuWordpressEcsStack extends Stack {
    * Create target groups, security groups, listeners, and dns routing for the ALB
    * @param stack The Stack construct in scope
    */
-  private configureLoadBalancer(stack: BuWordpressEcsStack) {
+  private configureLoadBalancer(stack: BuS3ProxyEc2Stack) {
 
     let listener_certificates: elbv2.IListenerCertificate[] = [];
     let listener_port = sigv4_host_port;
 
     if(this.useSSL(stack)) {
-      const hostedZone = route53.HostedZone.fromLookup(stack, 'Zone', { domainName: stack.context.HOSTED_ZONE });
+      const hostedZone = route53.HostedZone.fromLookup(stack, 'Zone', { domainName: stack.context.DNS.hostedZone });
       new route53.ARecord(stack, 'AliasRecord', {
         zone: hostedZone,
-        recordName: stack.context.RECORD_NAME,
+        recordName: stack.context.S3PROXY.recordName,
         target: route53.RecordTarget.fromAlias(new LoadBalancerTarget(stack.alb))
       });
 
       listener_port = 443;
-      listener_certificates.push({ certificateArn: stack.context.CERTIFICATE_ARN });
+      listener_certificates.push({ certificateArn: stack.context.DNS.certificateARN });
     }
 
     stack.sslListener = stack.alb.addListener(`${sigv4_prefix}-listener'`, { 

@@ -1,0 +1,8 @@
+# Fargate considerations
+
+- **Sidecar containers**
+  Typically, one configures a task definition with a single container definition. However, one has the option to put additional container definitions into the task definition as "sidecar" containers. In such a scenario, ECS based on ec2 instances provides for containers in a task to talk to one another directly as long as the task definition uses the [Bridge network mode](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/networking-networkmode-bridge.html). In a task with two containers, if the first container is named "app" and the second one "proxy", then from within the first container, one can communicate with the second container over http with a URL like this: 
+  `"http://proxy:8080"`, which assumes that the second container is listening on port 8080. However, Fargate uses the [AWSVPC network mode](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-networking-awsvpc.html) only. Is the same scenario possible in ECS based on Fargate? Yes, however the names of the containers cannot be used in the same way to serve as host names as with the example above, but containers that belong to the same task can communicate over the `localhost` interface *(just have to use the correct port)*.
+  See:
+  - [Task networking for tasks hosted on Fargate](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-task-networking.html)
+  - [AWS Fargate security considerations (talks about sidecars)](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/fargate-security-considerations.html)
