@@ -3,7 +3,6 @@ import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { AdaptableConstruct } from './AdaptableFargateService';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
-import { FargateTaskDefinition } from 'aws-cdk-lib/aws-ecs';
 
 const olap_service: string = 's3-object-lambda';
 

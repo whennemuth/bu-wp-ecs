@@ -18,3 +18,5 @@ The [CDK](https://docs.aws.amazon.com/cdk/v2/guide/home.html) is the cloud-formi
 - Automatically uploads generated templates to an automatically generated s3 bucket for cloudformation to target.
 
 - Automatically empties buckets so they can be removed without error during a stack deletion.
+
+- Automatically `aws:cdk:path` metadata to each resource that seems to drive a much more organized tree view in the aws management console for cloud formation.

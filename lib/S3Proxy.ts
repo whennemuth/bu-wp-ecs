@@ -28,13 +28,15 @@ export abstract class WordpressS3ProxyEcsConstruct extends AdaptableConstruct im
     this.adaptResourceProperties();
 
     this.buildResources();
+
+    this.adaptResources();
   }
 
   setResourceProperties(): void {
 
     this.containerDefProps = new WordpressS3ProxyContainerDefConfig().getProperties(this);
     
-    this.taskDefProps = { family: this.prefix, cpu: 512, memoryLimitMiB: 512 };
+    this.taskDefProps = { family: this.prefix, cpu: 256, memoryLimitMiB: 512 };
 
     this.fargateServiceProps = {
       loadBalancerName: `${this.id}-alb`,
@@ -63,6 +65,10 @@ export abstract class WordpressS3ProxyEcsConstruct extends AdaptableConstruct im
       this, `${this.prefix}-fargate-service`, 
       Object.assign(this.fargateServiceProps, { taskDefinition: taskdef } )
     );
+
+    this.fargateService.targetGroup.configureHealthCheck({
+      path: this.healthcheck
+    });
     
     // Get the ALB to log to a bucket
     this.fargateService.loadBalancer.logAccessLogs(new Bucket(this, `${this.id}-alb-access-logs`, {

@@ -36,10 +36,17 @@ TODO: Include architectural explanation and diagram here.
 2. Obtain [security credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html?icmpid=docs_homepage_genref) for the admin-level [IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) you will be using for accessing the aws account to lookup and/or deploy resources.
    Create a [named profile](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-using-profiles) out of these credentials in your [`~/.aws/credentials`](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where) file.
    
+3. *Bootstrapping* is the process of provisioning resources for the AWS CDK before you can deploy AWS CDK apps into an AWS [environment](https://docs.aws.amazon.com/cdk/v2/guide/environments.html). *(An AWS environment is a combination of an AWS account and Region).* To bootstrap, follow [these steps](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html#bootstrapping-howto). The simple bootstrapping command is:
+
+   ```
+   export AWS_PROFILE=my_named_profile
+   cdk bootstrap aws://[aws account ID]/us-east-1
+   ```
+
 2. [OPTIONAL] Run the [CDK synth command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-synth) command to generate the cloudformation template that will be used to create the stack:
 
    ```
-   cdk synth --profile infnprd &> cdk.out/S3ProxyFargateStack.template.yaml
+   cdk synth --profile my_named_profile &> cdk.out/S3ProxyFargateStack.template.yaml
    ```
 
    *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a yaml file alongside the json file.*
@@ -47,7 +54,7 @@ TODO: Include architectural explanation and diagram here.
 3. Run the [CDK deploy command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-deploy) to create the stack:
 
    ```
-   cdk deploy --profile infnprd --no-rollback
+   cdk deploy --profile my_named_profile --no-rollback
    ```
 
 
