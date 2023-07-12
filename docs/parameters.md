@@ -106,7 +106,9 @@ An example context file comes with this repo, `./context/_example-context.json`.
     "SCENARIO": "s3proxy",
     "STACK_ID": "s3proxy",
     "PREFIXES": {
-      "s3proxy": "sigv4"
+      "wordpress": "jaydubbulb",
+      "s3proxy": "sigv4",
+      "rds": "rds"
     },
     "ACCOUNT": "037860335094",
     "REGION": "us-east-1",
@@ -122,13 +124,13 @@ An example context file comes with this repo, `./context/_example-context.json`.
     }
   }
   ```
-  
+
   This will deploy a [ApplicationLoadBalancedFargateService CDK Construct](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns.ApplicationLoadBalancedFargateService.html), resulting in a fargate cluster with one task running.
   Provided the following are true:
   
   - The [ALB](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html) created has a DNS name of `s3proxy-alb-1028790297.us-east-2.elb.amazonaws.com`
   
-  - A [bu-protected-s3-object-lambda](https://github.com/bu-ist/bu-protected-s3-object-lambda/tree/main) stack pre-exists, has a secret and object lambda access endpoint that match the "`bucketUserSecretName`" and "`OLAP`" parameters respectively, and had an asset uploaded as follows:
+  - A [bu-protected-s3-object-lambda](https://github.com/bu-ist/bu-protected-s3-object-lambda/tree/main) stack pre-exists in the same aws account, has a secret and object lambda access endpoint that match the "`bucketUserSecretName`" and "`OLAP`" parameters respectively, and had an asset uploaded as follows:
   
     ```
     aws --profile=bu s3 cp cuba-abroad-banner-compressed.jpg s3://wordpress-protected-s3-assets-dev-assets/original_media/jaydub-bulb.cms-devl.bu.edu/admissions/files/2018/09/

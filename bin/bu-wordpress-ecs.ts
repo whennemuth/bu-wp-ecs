@@ -32,13 +32,13 @@ switch(context.SCENARIO) {
    */
   case 'composite':
     var stack = new Stack(app, 'CompositeStack', stackProps);
-    new RdsConstruct(stack, context.PREFIXES['rds']);
-    new StandardWordpressConstruct(stack, context.PREFIXES['wordpress']);
+    new RdsConstruct(stack, context.PREFIXES.rds);
+    new StandardWordpressConstruct(stack, context.PREFIXES.wordpress);
     break;
   case 'composite-bu':
     var stack = new Stack(app, 'CompositeStack', stackProps);
-    new RdsConstruct(stack, context.PREFIXES['rds']);
-    new BuWordpressConstruct(stack, context.PREFIXES['wordpress']);
+    new RdsConstruct(stack, context.PREFIXES.rds);
+    new BuWordpressConstruct(stack, context.PREFIXES.wordpress);
   case 'wordpress':
     new StandardWordpressConstruct(new Stack(app, 'WordpressStack', stackProps), context.STACK_ID);
     break;  
