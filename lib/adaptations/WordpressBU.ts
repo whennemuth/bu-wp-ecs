@@ -1,10 +1,10 @@
 import { Stack, Duration } from 'aws-cdk-lib';
-import { WordpressEcsConstruct } from './Wordpress';
+import { WordpressEcsConstruct } from '../Wordpress';
 import { Vpc, Subnet, SecurityGroup, Peer, Port, SubnetSelection }  from "aws-cdk-lib/aws-ec2";
 import { Cluster, ScalableTaskCount} from 'aws-cdk-lib/aws-ecs';
-import { WordpressAppContainerDefConfig as containerDefConfig } from './WordpressAppContainerDefConfig';
+import { WordpressAppContainerDefConfig as containerDefConfig } from '../WordpressAppContainerDefConfig';
 import { Schedule } from 'aws-cdk-lib/aws-applicationautoscaling'
-import { AdaptableConstruct } from './AdaptableFargateService';
+import { AdaptableConstruct } from '../AdaptableFargateService';
 
 /**
  * This is the BU adaptation to the standard wordpress construct. All mutation of that baseline 
@@ -14,8 +14,8 @@ export class BuWordpressEcsConstruct extends WordpressEcsConstruct {
 
   private adaptations: Adaptations;
 
-  constructor(baseline: Stack, id: string) {
-    super(baseline, id);
+  constructor(baseline: Stack, id: string, props?: any) {
+    super(baseline, id, props);
     this.adaptations = new Adaptations(this);
   }
 
@@ -23,6 +23,7 @@ export class BuWordpressEcsConstruct extends WordpressEcsConstruct {
     Object.assign(
       this.fargateServiceProps,
       {
+        vpc: this.getVpc(),
         cluster: this.adaptations.getCluster(),
         taskSubnets: this.adaptations.getSubnetSelection(),
         securityGroups: this.adaptations.getSecurityGroups()
@@ -37,10 +38,11 @@ export class BuWordpressEcsConstruct extends WordpressEcsConstruct {
 
 
 /**
- * Export the adaptations themselves - makes it possible to "readapt" or decorate them elsewhere.
+ * Export the adaptations themselves - makes it possible to reuse or decorate them elsewhere.
  */
 export class Adaptations {
   private construct:AdaptableConstruct;
+  private vpc:Vpc;
 
   constructor(construct:AdaptableConstruct) {
     this.construct = construct;
@@ -48,7 +50,7 @@ export class Adaptations {
 
   public getCluster(): Cluster {
     return new Cluster(this.construct, `${this.construct.id}-cluster`, { 
-      vpc: Vpc.fromLookup(this.construct, 'BuVpc', { vpcId: this.construct.context.VPC_ID }),
+      vpc: this.construct.getVpc(),
       containerInsights: true,
       clusterName: `${this.construct.id}-cluster`,
     });
@@ -66,8 +68,8 @@ export class Adaptations {
   }
 
   public getSecurityGroups(): SecurityGroup[] {
-    const sg = new SecurityGroup(this.construct, `${this.construct.prefix}-campus-sg`, {
-      vpc: <Vpc> this.construct.fargateServiceProps.vpc, 
+    const sg = new SecurityGroup(this.construct, `${this.construct.id}-campus-sg`, {
+      vpc: this.construct.getVpc(), 
       allowAllOutbound: true
     });
 

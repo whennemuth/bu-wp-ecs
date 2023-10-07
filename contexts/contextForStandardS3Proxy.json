@@ -1,0 +1,23 @@
+{
+  "SCENARIO": "s3proxy",
+  "STACK_ID": "s3proxy",
+  "STACK_NAME": "wordpress-s3proxy-fargate-service",
+  "STACK_DESCRIPTION": "Standalone sigv4 signing service for proxying wordpress asset retrieval to s3.",
+  "PREFIXES": {
+    "wordpress": "jaydubbulb",
+    "s3proxy": "sigv4",
+    "rds": "rds"
+  },
+  "ACCOUNT": "037860335094",
+  "REGION": "us-east-2",
+  "S3PROXY": {
+    "dockerImage": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
+    "bucketUserSecretName": "wordpress-protected-s3-assets-dev-user/AccessKey",
+    "OLAP": "wordpress-protected-s3-assets-dev-olap"
+  },
+  "TAGS": {
+    "Service": "websites",
+    "Function": "wordpress",
+    "Landscape": "devl"
+  }
+}

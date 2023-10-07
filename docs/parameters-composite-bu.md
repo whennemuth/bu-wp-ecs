@@ -1,8 +1,15 @@
+# BU composite service (example)
+
+Parameters to deploy a Boston University wordpress service, including the database and the s3proxy service as a ["sidecar"](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/fargate-security-considerations.html)
+
+*Note that `WORDPRESS.env.s3ProxyHost` is removed entirely, which means the necessary default to `"localhost"`* for sidecar reference.
+
+```
 {
-  "SCENARIO": "wordpress",
+  "SCENARIO": "composite",
   "STACK_ID": "wp",
   "STACK_NAME": "wordpress-fargate-service",
-  "STACK_DESCRIPTION": "The standard Boston University Wordpress service.",  
+  "STACK_DESCRIPTION": "The Common security services Boston University Wordpress service",
   "PREFIXES": {
     "wordpress": "jaydubbulb",
     "s3proxy": "sigv4",
@@ -42,12 +49,12 @@
       "spEntityId": "https://*.kualitest.research.bu.edu/shibboleth",
       "idpEntityId": "https://shib-test.bu.edu/idp/shibboleth",
       "forwardedForHost": "jaydub-bulb.cms-devl.bu.edu",
-      "s3ProxyHost": "s3proxy.kualitest.research.bu.edu",
       "TZ": "America/New_York",
       "debug": "true",
       "dbType": "serverless",
       "dbUser": "root",
       "dbName": "wp_db",
+      "dbPort": "3306",
       "dbHost": ""
     },
     "secret": {
@@ -66,3 +73,5 @@
     "Landscape": "devl"
   }
 }
+```
+

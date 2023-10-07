@@ -20,7 +20,6 @@ export abstract class WordpressS3ProxyEcsConstruct extends AdaptableConstruct im
     this.scope = scope;
     this.context = scope.node.getContext('stack-parms');
     this.id = id;
-    this.prefix = this.context.PREFIXES.s3proxy;
     this.healthcheck = '/s3proxy-healthcheck';
 
     this.setResourceProperties();
@@ -36,7 +35,7 @@ export abstract class WordpressS3ProxyEcsConstruct extends AdaptableConstruct im
 
     this.containerDefProps = new WordpressS3ProxyContainerDefConfig().getProperties(this);
     
-    this.taskDefProps = { family: this.prefix, cpu: 256, memoryLimitMiB: 512 };
+    this.taskDefProps = { family: this.id, cpu: 256, memoryLimitMiB: 512 };
 
     this.fargateServiceProps = {
       loadBalancerName: `${this.id}-alb`,
@@ -57,12 +56,12 @@ export abstract class WordpressS3ProxyEcsConstruct extends AdaptableConstruct im
 
     this.setStackTags();
     
-    const taskdef = new FargateTaskDefinition(this, `${this.prefix}-taskdef`, this.taskDefProps);
+    const taskdef = new FargateTaskDefinition(this, `${this.id}-taskdef`, this.taskDefProps);
 
-    taskdef.addContainer(`${this.prefix}`, this.containerDefProps);
+    taskdef.addContainer(`${this.id}`, this.containerDefProps);
 
     this.fargateService = new albfs(
-      this, `${this.prefix}-fargate-service`, 
+      this, `${this.id}-fargate-service`, 
       Object.assign(this.fargateServiceProps, { taskDefinition: taskdef } )
     );
 

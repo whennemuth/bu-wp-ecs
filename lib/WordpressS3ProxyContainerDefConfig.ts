@@ -18,7 +18,7 @@ export class WordpressS3ProxyContainerDefConfig {
     );
     
     const host=`${scope.context.S3PROXY.OLAP}-${scope.context.ACCOUNT}.${olap_service}.${scope.context.REGION}.amazonaws.com`;
-    const prfx = this.prefix || scope.prefix;
+    const prfx = this.prefix || scope.id;
 
     return {
       image: ecs.ContainerImage.fromRegistry(scope.context.S3PROXY.dockerImage),

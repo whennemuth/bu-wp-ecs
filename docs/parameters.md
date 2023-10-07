@@ -2,12 +2,21 @@
 
 The following are parameters for the CDK deployment. Most of them can be regarded as equivalent to cloud-formation parameters, but others may be used by the CDK code for flow control, where it is possible to branch into alternate patterns and drive [composition](https://docs.aws.amazon.com/cdk/v2/guide/constructs.html#constructs_composition). 
 
-Depending on the scenario that applies, only a subset of the following parameters may be required. The complete listing is below, followed by a breakdown of each scenario and which of these parameters comprise the subset that are relevant to that scenario:
+### Scenarios
 
-### All Parameters
+There are a number of "scenarios" to pick from when deploying a stack. A scenario basically maps to use of a specific cdk [construct](https://docs.aws.amazon.com/cdk/v2/guide/constructs.html). For example the scenario could indicate part of the overall wordpress service, like just the database, or just the s3proxy signing service. Or, a scenario can specify a higher level construct that groups all such lower level constructs into a single deployment. A scenario can also specify standard vs. modified approaches:
+
+- **Standard**: A "Clean sheet of paper" baseline deployment that models aws recommended best practices. Provides a "standard" deployment of the construct as one would conduct in an unconstrained aws account, accepting most defaults.
+- **Modified**: Requires specific overrides/extensions that apply when working with an aws account that has a set of infrastructure and multi-tenancy pre-conditions. An example of this is the BU common security services accounts, where for example, there is a specific set of vpc/subnet infrastructure to deploy into.
+
+Depending on the scenario that applies, only a subset of the following parameters may be required. The complete listing is below, followed by examples that serve as a breakdown of each scenario and which of these parameters comprise the subset that are relevant to that scenario:
+
+### Available Parameters
 
 - SCENARIO: The ecs type: "wordpress-bu" or "s3proxy".
 - STACK_ID: Top-level string identifier for the stack that will go into the naming of most created resources.
+- STACK_NAME: The name of the stack will be shown in the cloudformation management console.
+- STACK_DESCRIPTION: The description of the stack as will be shown in the cloudformation management console.
 - PREFIXES: Mid-level string identifier for specific constructs *(wordpress, s3proxy, rds)*
 - ACCOUNT: The number of the aws account being deployed to.
 - REGION: The region being deployed to.
@@ -17,129 +26,64 @@ Depending on the scenario that applies, only a subset of the following parameter
 - CAMPUS_SUBNET2: The second of two "campus" subnets to restrict cluster capacity to in a CSS account
 - CAMPUS_VPN_CIDR(1-5): The  values for 5 common campus vpn ranges.
 - WP_APP_DV02_CIDR: The IP address of wp-app-dv02 as a CIDR.
-- DOCKER_IMAGE_SIGV4: The docker tag for the customized s3proxy docker container in a public docker registry, like the BU ECR
-- BUCKET_USER_SECRET_NAME: The name of a secrets manager secret for the credentials of a preexisting user that has a role sufficient for s3 bucket access needed by the s3proxy task.
-- WORDPRESS_SECRET_NAME: The name of a secrets manager secret for the WORDPRESS_CONFIG_EXTRA task definition secret. Contains all secrets that wordpress needs, including the database password, that are to be added to the wp-config.php file as documented [here](https://github.com/docker-library/wordpress/pull/142).
-- WORDPRESS_SERVER_NAME: The name of the apache virtual host for wordpress. *(See [apache servername directive](https://httpd.apache.org/docs/2.4/mod/core.html#servername))*
-- WORDPRESS_SP_ENTITY_ID: The shibboleth SP entity ID as known by the IDP. In shibboleth.xml: `ApplicationDefaults.entityID`
-- WORDPRESS_IDP_ENTITY_ID: The shibboleth IDP entity ID. In shibboleth.xml: `ApplicationDefaults.Sessions.SSO.entityID`
-- WORDPRESS_TZ: The timezone that the wordpress docker container is to use by way of setting this value as an environment variable.
-- OLAP: The name of the object lambda access point targeted by s3proxy container.
-- HOSTED_ZONE: The name of a preexisting hosted zone for which a new "A" record will created to route traffic to the ALB created.
-- S3PROXY_RECORD_NAME: The name of the record to be added to the hosted zone for the sigv4 signing service. This will be the hosted zone root name prefixed with a value for the sigv4 signing subdomain.
-- CERTIFICATE_ARN: The ARN of the preexisting ACM certificate that corresponds to hosted zone being used.
-- TAG_SERVICE: Standard tagging requirement for the service the app is part of
-- TAG_FUNCTION: Standard tagging requirement for the function the app performs
-- TAG_LANDSCAPE: Standard tagging requirement for identifying the environment the deployment serves for.
+- DNS:
+  - hostedZone: The name of a preexisting hosted zone for which a new "A" record will created to route traffic to the ALB created for wordpress.
+    The "A"
+  - includeRDS: Add a new record to the wordpress route53 hosted zone for the  the RDS database. This will allow for addressing connections to the database using something like `"dev.db.kualitest.research.bu.edu"`as an alternative to the automatically assigned socket address.
+  - certificateARN: The ARN of the preexisting ACM certificate that corresponds to hosted zone being used.
+- S3PROXY:
+  - dockerImage: The docker tag for the customized s3proxy docker container in a public docker registry, like the BU ECR
+  - bucketUserSecretName: The name of the secret that containers the credentials for the user whose role grants access to the s3 proxy signing service. Contains:
+    - bucket: The name of the bucket
+    - aws_access_key_id
+    - aws_secret_access_key
+    - aws_region
+  - OLAP: The name of the object lambda access point targeted by s3proxy container.
+- WORDPRESS:
+  - dockerImage: The docker tag for the image the container for the wordpress [task definition](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definitions.html) will use.
+  - env:
+    - serverName: The name of the apache virtual host for wordpress. *(See [apache servername directive](https://httpd.apache.org/docs/2.4/mod/core.html#servername))*
+    - spEntityId: The shibboleth SP entity ID as known by the IDP. In shibboleth.xml: `ApplicationDefaults.entityID`
+    - idpEntityId: The shibboleth IDP entity ID. In shibboleth.xml: `ApplicationDefaults.Sessions.SSO.entityID`
+    - forwardedForHost: The value to set for the X-Forwarded-Host request header that is added to all requests for assets as they are proxied to the container for signing (sigv4). This value will ensure that the asset is acquired from within the correct "site" directory of the s3 bucket.
+    - s3ProxyHost: The value to set for the [ProxyPass directive](https://httpd.apache.org/docs/2.4/mod/mod_proxy.html#proxypass) that identifies the host name of the sigv4 signing service. If the ECS task for this service runs independently, this value will be the hosted zone root name prefixed with a value for the sigv4 signing subdomain. If the ECS container hosting the s3 proxying service runs as a ["sidecar"](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/fargate-security-considerations.html) to the wordpress service, then its value is simply `"localhost"` *(default)*.
+    - TZ: The timezone that the wordpress docker container is to use by way of setting this value as an environment variable.
+    - debug: set to true or false. True indicates WORDPRESS_DEBUG=1 where any non-empty value will enable `WP_DEBUG` in `wp-config.php`
+    - dbType: *[default: "serverless"]*
+      - ["instance"](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.html)
+      - ["cluster"](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.html)
+      - ["serverless"](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html)
+    - dbUser: *defaults to `"root"`*
+    - dbName: *defaults to `"wp_db"`*
+    - dbHost: In a composite scenario, where the both the wordpress and rds services are being created, you can omit this field and have the values auto-generated as follows:
+      - DNS.hostedZone is present:
+        A CNAME record will automatically be appended to the pre-existing route53 hosted zone with a subdomain for the rds service.
+        So, if the DNS.hostedZone
+      - DNS.hostedZone is NOT present:
+        The dynamically generated dns for the rds instance/cluster will be referenced: 
+  - secret:
+    *SEE: [Using Secrets Manager](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html) for background information on how secrets work as environment variables with ECS*
+    - name: The name of a secrets manager secret that contains passwords and other sensitive settings for wordpress.
+    - fields:
+      - dbUser: The name of the entry in the secret that contains the user name of the administrator of the wordpress mysql database.
+        *NOTE: The [Credentials.fromSecret](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_rds.Credentials.html#static-fromwbrsecretsecret-username) cdk method expects this value to be `"username"`*
+      - dbPassword: The name of the entry in the secret that contains the password for the wordpress mysql database.
+        *NOTE: The [Credentials.fromSecret](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_rds.Credentials.html#static-fromwbrsecretsecret-username) cdk method expects this value to be `"password"`*
+      - configExtra: The name of the entry in the secret that contains the "WORDPRESS_CONFIG_EXTRA" content to be added dynamically to the wp-config.php file as documented [here](https://github.com/docker-library/wordpress/pull/142).
+      - spKey: The signing key for authentication with the BU shibboleth IDP. Documented [here](https://shibboleth.atlassian.net/wiki/spaces/CONCEPT/pages/948470554/SAMLKeysAndCertificates#SAMLKeysAndCertificates-SigningKeyandCertificate)
+      - spCert: The signing cert for authentication with the BU shibboleth IDP. Documented [here](https://shibboleth.atlassian.net/wiki/spaces/CONCEPT/pages/948470554/SAMLKeysAndCertificates#SAMLKeysAndCertificates-SigningKeyandCertificate)
+- TAGS:
+  - Service: Standard tagging requirement for the service the app is part of. Defaults to "websites"
+  - Function: Standard tagging requirement for the function the app performs. Defaults to "wordpress"
+  - Landscape: Standard tagging requirement for identifying the environment the deployment serves for.
+    "prod", "test", "devl", etc. This value is also integrated into naming and attributes for cloud-formed resources for uniqueness.
 
-##### Example
 
-An example context file comes with this repo, `./context/_example-context.json`. It shows all possible parameters that can be used to create the wordpress stack and serves as a reference in so far as the values say a lot about the parameter itself:
 
-```
-{
-  "SCENARIO": "s3proxy",
-  "STACK_ID": "s3proxy2",
-  "PREFIXES": {
-    "wordpress": "jaydubbulb",
-    "s3proxy": "sigv4",
-    "rds": "rds"
-  },
-  "ACCOUNT": "770203350335",
-  "REGION": "us-east-1",
-  "VPC_ID": "vpc-0290de1785982a52f",
-  "CIDRS": [
-    {
-      "name": "campus1", 
-      "cidr": "168.122.81.0/24"
-    },
-    {
-      "name": "campus2", 
-      "cidr": "168.122.82.0/23"
-    },
-    {
-      "name": "campus3", 
-      "cidr": "168.122.76.0/24"
-    },
-    {
-      "name": "campus4", 
-      "cidr": "168.122.68.0/24"
-    },
-    {
-      "name": "campus5", 
-      "cidr": "168.122.69.0/24"
-    },
-    {
-      "name": "wp-app-dv02", 
-      "cidr": "168.122.81.0/24"
-    }
-  ],
-  "CAMPUS_SUBNET1": "subnet-06edbf07b7e07d73c",
-  "CAMPUS_SUBNET2": "subnet-0032f03a478ee868b",
-  "DOCKER_IMAGE_SIGV4": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
-  "DOCKER_IMAGE_WORDPRESS": "770203350335.dkr.ecr.us-east-1.amazonaws.com/wrhtest:jaydub-bulb",
-  "BUCKET_USER_SECRET_NAME": "wordpress-protected-s3-assets-jaydub-user/AccessKey",
-  "OLAP": "wordpress-protected-s3-assets-jaydub-olap",
-  "HOSTED_ZONE": "kualitest.research.bu.edu",
-  "S3PROXY_RECORD_NAME": "s3proxy.kualitest.research.bu.edu",
-  "CERTIFICATE_ARN": "arn:aws:acm:us-east-1:770203350335:certificate/117fad49-d620-4bd3-a624-879f3fbd7ab7",
-  "WORDPRESS_SECRET_NAME": "wrhtest",
-  "WORDPRESS_SERVER_NAME": "dev.kualitest.research.bu.edu",
-  "WORDPRESS_SP_ENTITY_ID": "https://*.kualitest.research.bu.edu/shibboleth",
-  "WORDPRESS_IDP_ENTITY_ID": "https://shib-test.bu.edu/idp/shibboleth",
-  "WORDPRESS_FORWARDED_FOR_HOST": "jaydub-bulb.cms-devl.bu.edu",
-  "WORDPRESS_TZ": "America/New_York",
-  "TAGS": {
-    "Service": "websites",
-    "Function": "wordpress",
-    "Landscape": "devl"
-  }
-}
-```
+### Examples:
 
-### Scenarios
-
-- Standard standalone s3proxy service *(no wordpress, database, etc)*:
-
-  ```
-  {
-    "SCENARIO": "s3proxy",
-    "STACK_ID": "s3proxy",
-    "PREFIXES": {
-      "wordpress": "jaydubbulb",
-      "s3proxy": "sigv4",
-      "rds": "rds"
-    },
-    "ACCOUNT": "037860335094",
-    "REGION": "us-east-1",
-    "S3PROXY": {
-      "dockerImage": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
-      "bucketUserSecretName": "wordpress-protected-s3-assets-dev-user/AccessKey",
-      "OLAP": "wordpress-protected-s3-assets-dev-olap"
-    },
-    "TAGS": {
-      "Service": "websites",
-      "Function": "wordpress",
-      "Landscape": "devl"
-    }
-  }
-  ```
-
-  This will deploy a [ApplicationLoadBalancedFargateService CDK Construct](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns.ApplicationLoadBalancedFargateService.html), resulting in a fargate cluster with one task running.
-  Provided the following are true:
-  
-  - The [ALB](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html) created has a DNS name of `s3proxy-alb-1028790297.us-east-2.elb.amazonaws.com`
-  
-  - A [bu-protected-s3-object-lambda](https://github.com/bu-ist/bu-protected-s3-object-lambda/tree/main) stack pre-exists in the same aws account, has a secret and object lambda access endpoint that match the "`bucketUserSecretName`" and "`OLAP`" parameters respectively, and had an asset uploaded as follows:
-  
-    ```
-    aws --profile=bu s3 cp cuba-abroad-banner-compressed.jpg s3://wordpress-protected-s3-assets-dev-assets/original_media/jaydub-bulb.cms-devl.bu.edu/admissions/files/2018/09/
-    ```
-  
-  ...then, you should be able to see the `cuba-abroad-banner-compressed.jpg` image in your browser at the following url:
-  
-  ```
-  http://s3proxy-alb-1028790297.us-east-2.elb.amazonaws.com/jaydub-bulb.cms-devl.bu.edu/admissions/files/2018/09/cuba-abroad-banner-compressed.jpg
-  ```
-  
-  
+- Below is a listing of example configurations for each of the different scenarios:
+- [Standard standalone s3proxy service](./parameters-s3proxy.md) *(no wordpress, database, etc)*:
+- [Standard standalone wordpress service](./parameters-wordpress.md) *(database and s3proxy service must pre-exist and whose details must be included)*.
+- [Standard composite service](./parameters-composite.md) *(database is also created along with the s3proxy service as a ["sidecar"](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/fargate-security-considerations.html))*
+- [Adapted composite service](./parameters-composite-bu.md) *(Same as standard composite service, but with adaptations specific to the bu common security services aws account)*

@@ -1,42 +1,27 @@
+# Standard standalone wordpress service (example)
+
+Parameters to deploy a standalone wordpress fargate service *(database and s3proxy service must pre-exist and whose details must be included)*:
+
+```
 {
   "SCENARIO": "wordpress",
   "STACK_ID": "wp",
   "STACK_NAME": "wordpress-fargate-service",
-  "STACK_DESCRIPTION": "The standard Boston University Wordpress service.",  
+  "STACK_DESCRIPTION": "Standalone Boston University fargate service for wordpress.",
   "PREFIXES": {
     "wordpress": "jaydubbulb",
     "s3proxy": "sigv4",
     "rds": "rds"
   },
-  "ACCOUNT": "770203350335",
-  "REGION": "us-east-1",
-  "VPC_ID": "vpc-0290de1785982a52f",
-  "CIDRS": {
-    "campus1": "168.122.81.0/24",
-    "campus2": "168.122.82.0/23",
-    "campus3": "168.122.76.0/24",
-    "campus4": "168.122.68.0/24",
-    "campus5": "168.122.69.0/24",
-    "wp-app-dv02": "168.122.81.0/24",
-    "dbreport1": "168.122.78.128/28",
-    "dbreport2": "168.122.84.240/28"
-  },
-  "SUBNETS": {
-    "campus1": "subnet-06edbf07b7e07d73c",
-    "campus2": "subnet-0032f03a478ee868b"
-  },
-  "DNS": {
-    "hostedZone": "kualitest.research.bu.edu",
-    "certificateARN": "arn:aws:acm:us-east-1:770203350335:certificate/117fad49-d620-4bd3-a624-879f3fbd7ab7",
-    "includeRDS": "true"
-  },
+  "ACCOUNT": "037860335094",
+  "REGION": "us-east-2",
   "S3PROXY": {
     "dockerImage": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
-    "bucketUserSecretName": "wordpress-protected-s3-assets-jaydub-user/AccessKey",
-    "OLAP": "wordpress-protected-s3-assets-jaydub-olap"
+    "bucketUserSecretName": "wordpress-protected-s3-assets-dev-user/AccessKey",
+    "OLAP": "wordpress-protected-s3-assets-dev-olap"
   },
   "WORDPRESS": {
-    "dockerImage": "770203350335.dkr.ecr.us-east-1.amazonaws.com/wrhtest:jaydub-bulb",
+    "dockerImage": "037860335094.dkr.ecr.us-east-2.amazonaws.com/bu-wordpress-baseline:latest",
     "env": {
       "serverName": "dev.kualitest.research.bu.edu",
       "spEntityId": "https://*.kualitest.research.bu.edu/shibboleth",
@@ -66,3 +51,5 @@
     "Landscape": "devl"
   }
 }
+```
+
