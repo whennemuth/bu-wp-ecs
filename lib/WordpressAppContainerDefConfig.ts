@@ -23,7 +23,7 @@ export class WordpressAppContainerDefConfig {
     
     return {
       image: ecs.ContainerImage.fromRegistry(scope.context.WORDPRESS.dockerImage),
-      containerName: scope.id,
+      containerName: 'wordpress',
       memoryReservationMiB: 1024,
       healthCheck: {
         command: [ 'CMD-SHELL', 'echo hello' ],
@@ -32,14 +32,15 @@ export class WordpressAppContainerDefConfig {
         retries: 3
       },
       portMappings: [
-        {
-          containerPort: WordpressAppContainerDefConfig.HOST_PORT,
-          hostPort: WordpressAppContainerDefConfig.HOST_PORT,
-          protocol: ecs.Protocol.TCP
-        },
+        // DOH! The order of port mappings is crucial. See gotchas readme file.
         {
           containerPort: 80,
           hostPort: 80,
+          protocol: ecs.Protocol.TCP
+        },
+        {
+          containerPort: WordpressAppContainerDefConfig.HOST_PORT,
+          hostPort: WordpressAppContainerDefConfig.HOST_PORT,
           protocol: ecs.Protocol.TCP
         },
       ],
@@ -55,7 +56,7 @@ export class WordpressAppContainerDefConfig {
         SP_ENTITY_ID: scope.context.WORDPRESS.env.spEntityId,
         IDP_ENTITY_ID: scope.context.WORDPRESS.env.idpEntityId,
         TZ: scope.context.WORDPRESS.env.TZ,
-        S3PROXY_HOST: scope.context.WORDPRESS.env.s3ProxyHost || 'localhost',
+        S3PROXY_HOST: scope.context.WORDPRESS.env.s3ProxyHost || 'http://localhost:8080',
         FORWARDED_FOR_HOST: scope.context.WORDPRESS.env.forwardedForHost,
         WORDPRESS_DB_HOST: getRdsHost(),
         WORDPRESS_DB_USER: scope.context.WORDPRESS.env.dbUser || 'root',

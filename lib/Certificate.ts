@@ -1,9 +1,11 @@
-import { Construct } from 'constructs';
 import * as forge from 'node-forge';
-import { IContext } from '../contexts/IContext';
-import { CfnServerCertificate } from 'aws-cdk-lib/aws-iam';
-import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { SecretValue } from 'aws-cdk-lib';
+import * as context from '../contexts/context.json';
+import { IAMClient, UploadServerCertificateCommand, GetServerCertificateCommand, DeleteServerCertificateCommand } from '@aws-sdk/client-iam';
+
+export enum IamServerCertificate {
+  ServerCertificateName = 'wp-iam-selfsigned-cert',
+  Path = '/bu/wordpress/servercerts/'
+}
 
 export interface SelfSignedCertificate {
   certificateBody: string;
@@ -12,11 +14,95 @@ export interface SelfSignedCertificate {
 }
 
 /**
- * Create an X509 PEM formatted certificate for ssl transprot.
+ * Look for the iam server certificate by name and indicate if found.
+ * @param ServerCertificateName 
+ * @returns 
+ */
+export async function lookupCertificateArn(ServerCertificateName:string=IamServerCertificate.ServerCertificateName): Promise<string> {
+
+  const client = new IAMClient({ });
+  const command = new GetServerCertificateCommand({ ServerCertificateName });
+  try {
+    const response = await client.send(command);
+    return response.ServerCertificate?.ServerCertificateMetadata?.Arn || '';
+  }
+  catch(e:any) {
+    if(e.name === 'NoSuchEntityException') {
+      return '';
+    }
+    throw(e);
+  }
+}
+
+/**
+ * Create the iam server certificate.
+ * @param ServerCertificateName 
+ * @param tags 
+ * @returns 
+ */
+export async function createIamServerCertificate(
+  ServerCertificateName:string=IamServerCertificate.ServerCertificateName,
+  Path:string=IamServerCertificate.Path): Promise<string> {
+
+  const cert:SelfSignedCertificate = generateSelfSignedCertificate(10);
+  const client = new IAMClient({ });
+  const command = new UploadServerCertificateCommand({
+    Path,
+    ServerCertificateName,
+    CertificateBody: cert.certificateBody,
+    PrivateKey: cert.privateKey,
+    CertificateChain: cert.certificateChain,
+    Tags: [
+      { Key: 'Service', Value: context.TAGS.Service },
+      { Key: 'Function', Value: context.TAGS.Function },
+    ],
+  });
+  const response = await client.send(command);
+  return response?.ServerCertificateMetadata?.Arn || '';
+}
+
+/**
+ * Delete the iam server certificate.
+ * @param ServerCertificateName 
+ * @returns 
+ */
+export async function deleteIamServerCertificate(ServerCertificateName:string=IamServerCertificate.ServerCertificateName): Promise<boolean> {
+  const client = new IAMClient({ });
+  const command = new DeleteServerCertificateCommand({ ServerCertificateName });
+  try {
+    const response = await client.send(command);
+    return true;
+  }
+  catch(e:any) {
+    if(e.name === 'NoSuchEntityException') {
+      return true;
+    }
+    return false;
+  }
+}
+
+/**
+ * Lookup the arn of the iam server certificate, else create it, but return the arn in either case.
+ * @param ServerCertificateName 
+ * @returns 
+ */
+export async function checkIamServerCertificate(ServerCertificateName:string=IamServerCertificate.ServerCertificateName): Promise<string> {
+  console.log(`Looking up iam server certificate ${IamServerCertificate.ServerCertificateName}...`);
+  let arn = await lookupCertificateArn();
+  if( ! arn) {
+    console.log(`Creating iam server certificate ${IamServerCertificate.ServerCertificateName}...`);
+    arn = await createIamServerCertificate();
+  }
+  console.log(`IAM server certificate arn: ${arn}`);
+  return arn;
+}
+
+/**
+ * Create an X509 PEM formatted certificate for ssl transport.
  * @param expireYears Years the certificate is valid for.
  * @returns 
  */
-function createSelfSignedCertificate(expireYears?: number): SelfSignedCertificate {
+export function generateSelfSignedCertificate(expireYears?: number): SelfSignedCertificate {
   // Generate a key pair
   const keys = forge.pki.rsa.generateKeyPair(2048);
 
@@ -47,55 +133,4 @@ function createSelfSignedCertificate(expireYears?: number): SelfSignedCertificat
   const privateKey = forge.pki.privateKeyToPem(keys.privateKey);
 
   return { certificateBody, certificateChain, privateKey };
-}
-
-export interface CertProps { yearsToExpire:number, createSecret?:boolean }
-
-/**
- * Create an iam server certificate for reference by the ssl listeners of albs.
- */
-export class IamCertificate extends Construct {
-
-  private _serverCertificateArn:string;
-
-  constructor(scope: Construct, id: string, props?: CertProps) {
-
-    super(scope, id);
-
-    const context: IContext = scope.node.getContext('stack-parms');
-
-    const { certificateBody, certificateChain, privateKey } = createSelfSignedCertificate(props?.yearsToExpire);
-
-    let cert:CfnServerCertificate;
-
-    if(props?.createSecret) {
-      // First load the certificate into a secrets manager secret for the ecs wordpress task to get at as environment variables.
-      const secret:Secret = new Secret(this, `${id}-iam-selfsigned-cert-secret`, {
-        description: `Stores ssl pem content for ${id}-fargate-alb`,
-        secretName: `${context.TAGS.Landscape}/wp/pem`,
-        secretStringValue: SecretValue.unsafePlainText(JSON.stringify({ 
-          certificateBody, 
-          certificateChain, 
-          privateKey,
-        }))
-      });
-      
-      // Create the iam server certificate
-      cert = new CfnServerCertificate(this, `${id}-iam-selfsigned-cert`, {
-        privateKey: SecretValue.secretsManager(secret.secretArn, { jsonField: 'privateKey' }).unsafeUnwrap(), 
-        certificateBody: SecretValue.secretsManager(secret.secretArn, { jsonField: 'certificateBody' }).unsafeUnwrap(), 
-        certificateChain: SecretValue.secretsManager(secret.secretArn, { jsonField: 'privateKey' }).unsafeUnwrap(), 
-      });
-    }
-    else {
-      // Create the iam server certificate
-      cert = new CfnServerCertificate(this, `${id}-iam-selfsigned-cert`, { certificateBody, certificateChain, privateKey});   
-    }
-
-    this._serverCertificateArn = cert.attrArn;
-  }
-
-  public getIamCertArn(): string {
-    return this._serverCertificateArn;
-  }
 }

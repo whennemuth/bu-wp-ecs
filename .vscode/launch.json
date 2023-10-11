@@ -3,7 +3,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "wp-to-cloud",
+      "name": "(CDK) wp-to-cloud",
       "skipFiles": [
         "<node_internals>/**"
       ],
@@ -14,6 +14,25 @@
         "${workspaceFolder}/bin/bu-wordpress-ecs.ts"
       ], 
       "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "certificate-test-harness",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": [
+        "-r", "./node_modules/ts-node/register/transpile-only"
+      ],
+      "args": [
+        "${workspaceFolder}/lib/CertificateTestHarness.ts",
+        "delete"
+      ], 
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "AWS_PROFILE": "bu"
+      }   
     }
   ]
 }

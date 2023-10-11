@@ -11,6 +11,7 @@ import { BuS3ProxyEc2Stack as S3ProxyEc2Stack } from '../lib/temp/ec2';
 import { IVpc, IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { HostedZoneWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
 import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
+import { checkIamServerCertificate } from '../lib/Certificate';
 
 const app = new App();
 app.node.setContext('stack-parms', context);
@@ -42,14 +43,16 @@ switch(context.SCENARIO.toLowerCase()) {
       availabilityZones: [ `${context.REGION}a`, `${context.REGION}b`]
     }); 
     var rds = new RdsConstruct(stack, `${context.STACK_ID}-${context.PREFIXES.rds}`, { vpc });
-    var ecs = getStandardCompositeInstance(
+
+    getStandardCompositeInstance(
       stack, 
       `${context.STACK_ID}-${context.PREFIXES.wordpress}`, { 
         vpc,
         rdsHostName: rds.endpointAddress 
       }
-    );
-    rds.addSecurityGroupIngressTo(ecs.securityGroup.securityGroupId);
+    ).then(ecs => {
+      rds.addSecurityGroupIngressTo(ecs.securityGroup.securityGroupId);
+    });    
     break;
   case scenarios.COMPOSITE_BU:
     var stack = new Stack(app, 'CompositeStack', stackProps);
@@ -71,7 +74,12 @@ switch(context.SCENARIO.toLowerCase()) {
     new BuWordpressConstruct(new Stack(app, 'WordpressStack', stackProps), `${context.STACK_ID}-${context.PREFIXES.wordpress}`);
     break;
   case scenarios.RDS:
-    new RdsConstruct(new Stack(app, 'RdsStack', stackProps), `${context.STACK_ID}-${context.PREFIXES.rds}`);
+    var stack = new Stack(app, 'RdsStack', stackProps);
+    var vpc: Vpc = new Vpc(stack, `${context.STACK_ID}-vpc`, { 
+      ipAddresses: IpAddresses.cidr('10.0.0.0/21'),
+      availabilityZones: [ `${context.REGION}a`, `${context.REGION}b`]
+    }); 
+    new RdsConstruct(stack, `${context.STACK_ID}-${context.PREFIXES.rds}`, { vpc });
     break;
 
   /**
@@ -110,13 +118,16 @@ switch(context.SCENARIO.toLowerCase()) {
 * @param props 
 * @returns 
 */
-function getStandardCompositeInstance(stack: Stack, id: string, props?: any): WordpressEcsConstruct {
+async function getStandardCompositeInstance(stack: Stack, id: string, props?: any): Promise<WordpressEcsConstruct> {
   const context:IContext = stack.node.getContext('stack-parms');
   if(context?.DNS?.certificateARN && context?.DNS?.hostedZone) {
     return new HostedZoneWordpressEcsConstruct(stack, `${context.STACK_ID}-${context.PREFIXES.wordpress}`, props);
   }
   else if( ! context?.DNS?.certificateARN) {
-    return new SelfSignedWordpressEcsConstruct(stack, `${context.STACK_ID}-${context.PREFIXES.wordpress}`, props);
+    return checkIamServerCertificate().then(arn => {
+      Object.assign(props, { iamServerCertArn: arn })
+      return new SelfSignedWordpressEcsConstruct(stack, `${context.STACK_ID}-${context.PREFIXES.wordpress}`, props);
+    });    
   }
   else {
     console.log("WARNING: This fargate service will not be publicly addressable. " + 

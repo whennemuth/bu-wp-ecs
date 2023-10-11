@@ -2,7 +2,7 @@ import { AdaptableConstruct, FargateService } from './AdaptableFargateService';
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { PropagatedTagSource, FargateTaskDefinition, ContainerDefinitionOptions } from 'aws-cdk-lib/aws-ecs';
+import { PropagatedTagSource, FargateTaskDefinition, ContainerDefinitionOptions, Cluster } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService as albfs } from 'aws-cdk-lib/aws-ecs-patterns';
 import { WordpressAppContainerDefConfig } from './WordpressAppContainerDefConfig';
 import { WordpressS3ProxyContainerDefConfig } from './WordpressS3ProxyContainerDefConfig';
@@ -10,18 +10,10 @@ import { SecurityGroup } from "aws-cdk-lib/aws-ec2";
 import { SCENARIO as scenarios } from '../contexts/IContext';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
-/** 
- * RESUME NEXT: 
- *   1) Test that enableExecuteCommand configuration works by using ecs execute-command in a cloud shell against the wordpress container.
- *      https://dev.to/aws-builders/how-to-run-a-shell-on-ecs-fargate-containers-eo1
- *   2) Document last step in readme file.
- *   3) Get local mysql workbench connection to aurora working
- *   4) Confirm wordpress container is talking to aurora.
- *   5) Figure out how to get http (not https) health check endpoint to be ok with apache.
- *   6) Rebuild and switch to the "bu-wordpress-build" image and configure a wordpress site that gets an 
- *      asset from the bucket to confirm the s3proxy sidecar is working. May need to append ":8080" to the localhost proxy
-*/
-
+/**
+ * Baseline class for the wordpresss application load balanced fargate service.
+ * Subclasses will "adapt" this baseline in order to customize it. 
+ */
 export abstract class WordpressEcsConstruct extends AdaptableConstruct implements FargateService {
 
   private _sidecarContainerDefProps: ContainerDefinitionOptions;
@@ -76,7 +68,12 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
     });  
     
     this.fargateServiceProps = {
-      serviceName: `${this.id}-service`,
+      serviceName: `${this.id}-service-${this.context.TAGS.Landscape}`,
+      cluster: new Cluster(this, `${this.id}-cluster`, {
+        clusterName: `${this.id}-cluster-${this.context.TAGS.Landscape}`,
+        containerInsights: true,
+        vpc: this.getVpc()
+      }),
       enableExecuteCommand: true,
       loadBalancerName: `${this.id}-fargate-alb`,
       desiredCount: 1,
@@ -86,7 +83,6 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       propagateTags: PropagatedTagSource.TASK_DEFINITION,
       capacityProviderStrategies: [ { capacityProvider: 'FARGATE', base: 1, weight: 1 } ],
       securityGroups: [ this._securityGroup ],
-      vpc: this.getVpc(),
       assignPublicIp: false,
       healthCheckGracePeriod: Duration.seconds(15),
       publicLoadBalancer: false,
@@ -110,10 +106,10 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       Object.assign(this.fargateServiceProps, { taskDefinition: wordpressTaskDef } )
     );
 
-    // TODO: fix healthcheck and change healthyHttpCodes to something like "200-299"
     this.fargateService.targetGroup.configureHealthCheck({
       path: this.healthcheck,
-      healthyHttpCodes: '200-499'
+      healthyThresholdCount: 3,
+      healthyHttpCodes: '200-299',
     });
     
     // Get the ALB to log to a bucket
@@ -133,10 +129,6 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
         'ecr:BatchGetImage',
         'ecr:GetDownloadUrlForLayer',
         'ecr:GetAuthorizationToken',
-        // 'ssmmessages:CreateControlChannel',
-        // 'ssmmessages:CreateDataChannel',
-        // 'ssmmessages:OpenControlChannel',
-        // 'ssmmessages:OpenDataChannel'
       ]
     }));
   }
@@ -150,6 +142,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 /**
  * "Clean sheet of paper" baseline that models aws recommended best practices.
  * Provides a "standard" deployment of this construct as one would conduct in an unconstrained aws account, accepting most defaults.
+ * NOTE: This construct does not currently provide any public access to the fargate service.
  */
 export class StandardWordpressConstruct extends WordpressEcsConstruct {
   adaptResourceProperties(): void { /* Do nothing */ }

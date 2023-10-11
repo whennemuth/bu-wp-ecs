@@ -1,12 +1,12 @@
 import { Construct } from 'constructs';
-import { DatabaseInstance, DatabaseInstanceEngine, MysqlEngineVersion, Credentials, } from 'aws-cdk-lib/aws-rds';
+import { DatabaseInstance, DatabaseInstanceEngine, MysqlEngineVersion, Credentials, CfnDBCluster, ClusterInstance, CfnDBInstance, } from 'aws-cdk-lib/aws-rds';
 import { DatabaseCluster, DatabaseClusterEngine, AuroraMysqlEngineVersion } from 'aws-cdk-lib/aws-rds';
 import { ServerlessCluster, AuroraCapacityUnit } from 'aws-cdk-lib/aws-rds';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { CnameRecord, HostedZone } from 'aws-cdk-lib/aws-route53';
 import { IContext, WORDPRESS_DB_TYPE } from '../contexts/IContext';
-import { Vpc, IpAddresses, SubnetType, SecurityGroup, Peer, Port }  from "aws-cdk-lib/aws-ec2";
-import { Duration } from 'aws-cdk-lib';
+import { Vpc, IpAddresses, SubnetType, SecurityGroup, Peer, Port, InstanceType, InstanceClass, InstanceSize }  from "aws-cdk-lib/aws-ec2";
+import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 
 export class BuWordpressRdsConstruct extends Construct {
 
@@ -56,14 +56,18 @@ export class BuWordpressRdsConstruct extends Construct {
       case WORDPRESS_DB_TYPE.INSTANCE:
         const di: DatabaseInstance = new DatabaseInstance(this, `${id}-mysql-instance`, {
           vpc: this.vpc,
-          vpcSubnets: { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
+          vpcSubnets: { subnetType: SubnetType.PUBLIC },
           engine: DatabaseInstanceEngine.mysql({
             version: MysqlEngineVersion.VER_5_7_43
           }),
+          // enablePerformanceInsights: true,
           copyTagsToSnapshot: true,
           databaseName: this._context.WORDPRESS.env.dbName,
           credentials,
+          instanceType: InstanceType.of( InstanceClass.T3, InstanceSize.SMALL ),
           securityGroups: [ this._securityGroup ],
+          publiclyAccessible: true,
+          removalPolicy: RemovalPolicy.DESTROY,
         }); 
         this._rdsSocketAddress = di.instanceEndpoint.socketAddress;   
         break;
@@ -71,36 +75,66 @@ export class BuWordpressRdsConstruct extends Construct {
       case WORDPRESS_DB_TYPE.CLUSTER: 
         const dc: DatabaseCluster = new DatabaseCluster(this, `${id}-mysql-cluster`, {
           vpc: this.vpc,
-          vpcSubnets: { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
+          vpcSubnets: { subnetType: SubnetType.PUBLIC },
           engine: DatabaseClusterEngine.auroraMysql({
             version: AuroraMysqlEngineVersion.VER_2_11_3,
             // version: AuroraMysqlEngineVersion.of('5.7.mysql_aurora.2.11.3'),        
           }),
+          readers: [
+            ClusterInstance.serverlessV2(`${id}-mysql-reader`, {
+              publiclyAccessible: true,
+              scaleWithWriter: true,
+              instanceIdentifier: `${id}-mysql-reader-instance`
+            })
+          ],
+          writer: ClusterInstance.serverlessV2(`${id}-mysql-writer`, {
+            publiclyAccessible: true,
+            enablePerformanceInsights: true,
+            instanceIdentifier: `${id}-mysql-writer-instance`
+          }),
+          serverlessV2MinCapacity: AuroraCapacityUnit.ACU_1,
+          serverlessV2MaxCapacity: AuroraCapacityUnit.ACU_8,
           copyTagsToSnapshot: true,
           defaultDatabaseName: this._context.WORDPRESS.env.dbName,
           credentials,
           securityGroups: [ this._securityGroup ],
+          removalPolicy: RemovalPolicy.DESTROY,
         });
+        // var cfnDBCluster = dc.node.defaultChild as CfnDBCluster;
+        // cfnDBCluster.addPropertyOverride('PubliclyAccessible', true);
         this._rdsSocketAddress = dc.clusterEndpoint.socketAddress;
         break;
 
       case WORDPRESS_DB_TYPE.SERVERLESS:
         const sc: ServerlessCluster = new ServerlessCluster(this, `${id}-mysql-cluster`, {
           vpc: this.vpc,
-          vpcSubnets: { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
+          vpcSubnets: { subnetType: SubnetType.PUBLIC },
+          //aws rds describe-orderable-db-instance-options --engine aurora-mysql --db-instance-class db.serverless --region us-east-2
           engine: DatabaseClusterEngine.auroraMysql({
-            version: AuroraMysqlEngineVersion.VER_2_11_3,
+            version: AuroraMysqlEngineVersion.VER_3_04_0,
           }),
           copyTagsToSnapshot: true,
-          scaling: {
-            minCapacity: AuroraCapacityUnit.ACU_1,
-            maxCapacity: AuroraCapacityUnit.ACU_8
-          },
           defaultDatabaseName: this._context.WORDPRESS.env.dbName,
           backupRetention: Duration.days(7),
           credentials,
           securityGroups: [ this._securityGroup ],
+          removalPolicy: RemovalPolicy.DESTROY,
         });
+
+        // The CDK doesn't seem to have caught up with V2 of mysql/aurora serverless, so some escape hatches...
+        var cfnDBCluster = sc.node.defaultChild as CfnDBCluster;
+        cfnDBCluster.addPropertyOverride('ServerlessV2ScalingConfiguration.MinCapacity', AuroraCapacityUnit.ACU_1);
+        cfnDBCluster.addPropertyOverride('ServerlessV2ScalingConfiguration.MaxCapacity', AuroraCapacityUnit.ACU_8);
+        cfnDBCluster.addPropertyDeletionOverride('EngineMode');
+        cfnDBCluster.addPropertyDeletionOverride('StorageEncrypted');
+        
+        new CfnDBInstance(this, `${id}-mysql-cluster-instance`, {
+          engine: 'aurora-mysql',
+          dbInstanceClass: 'db.serverless',
+          dbClusterIdentifier: sc.clusterIdentifier,
+          publiclyAccessible: true       
+        });
+
         this._rdsSocketAddress = sc.clusterEndpoint.socketAddress;
         break;
     }

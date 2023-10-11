@@ -37,7 +37,7 @@ TODO: Include architectural explanation and diagram here.
    Create a [named profile](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-using-profiles) out of these credentials in your [`~/.aws/credentials`](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where) file.
    
 2. Install all dependencies:
-   
+  
    ```
    npm install
    ```
@@ -63,6 +63,33 @@ TODO: Include architectural explanation and diagram here.
    ```
    cdk deploy --profile my_named_profile --no-rollback
    ```
+   
+7. Visit the wordpress site.
+   The [ApplicationLoadBalancedFargateService construct](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns.ApplicationLoadBalancedFargateService.html) automatically produces 2 stack outputs. One is the alb public endpoint, and the other is the service endpoint. If you had included DNS parameters in the CDK app configuration to go through route53, the service endpoint would conform to that value, example:
+
+   ```
+   http://dev.kualitest.research.bu.edu
+   ```
+
+   Alternatively, the use of a self-signed certificate would be automatically come into play and the stack output would be the alb public address:
+
+   ```
+   http://wp-jaydubbulb-alb-devl-1906413712.us-east-2.elb.amazonaws.com
+   ```
+
+   So, if the s3 bucket associated with the object lambda access point configured in `S3PROXY.OLAP` of `./contexts/context.json`, is called `"wordpress-protected-s3-assets-dev-assets"`, and there is a jpg asset in that bucket at:
+
+   ```
+   s3://wordpress-protected-s3-assets-dev-assets/original_media/jaydub-bulb.cms-devl.bu.edu/admissions/files/2018/09/cuba-abroad-banner-compressed.jpg
+   ```
+
+   then you can have that asset served up to you via wordpress using the following url:
+
+   ```
+   https://wp-jaydubbulb-alb-devl-1906413712.us-east-2.elb.amazonaws.com/admissions/files/2018/09/cuba-abroad-banner-compressed.jpg
+   ```
+
+   
 
 
 ### Notes

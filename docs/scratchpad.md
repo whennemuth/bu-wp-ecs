@@ -2,7 +2,7 @@
 
 The following are common examples of commands for reference.
 
-- Run the sigv4 with your own credentials *(having sufficient privileges to access "talk" to the olap)* in a docker container:
+- Run the sigv4 service with your own credentials *(having sufficient privileges to access "talk" to the olap)* in a docker container:
 
   ```
   MSYS_NO_PATHCONV=1 && \
@@ -12,6 +12,12 @@ The following are common examples of commands for reference.
     -e 'healthcheck_path=/files/_healthcheck_' \
     -p 8080:8080 \
     aws-sigv4-proxy -v --name s3-object-lambda --region us-east-1 --no-verify-ssl
+  ```
+
+- Delete stack and recreate in one command without prompts:
+
+  ```
+  cdk destroy -f --profile bu && cdk deploy --profile bu --require-approval never --no-rollback
   ```
 
   
