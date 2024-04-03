@@ -8,7 +8,11 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "deploy": "cdk deploy --no-rollback --require-approval never",
+    "teardown": "cdk destroy -f",
+    "redeploy": "cdk destroy -f && npm run deploy",
+    "synth": "cdk synth 2>&1 | tee cdk.out/Stack.yaml"
   },
   "devDependencies": {
     "@types/jest": "^29.4.0",
