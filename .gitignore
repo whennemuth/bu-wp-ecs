@@ -9,3 +9,6 @@ cdk.out
 cdk.context.json
 
 contexts/context.json
+
+# Ignore vscode workspace files (assumes files end in "workspace")
+*workspace
