@@ -61,7 +61,8 @@ export class WordpressAppContainerDefConfig {
         WORDPRESS_DB_HOST: getRdsHost(),
         WORDPRESS_DB_USER: scope.context.WORDPRESS.env.dbUser || 'root',
         WORDPRESS_DB_NAME: scope.context.WORDPRESS.env.dbName || 'wp_db',
-        WORDPRESS_DEBUG: scope.context.WORDPRESS.env.debug || 'true'
+        WORDPRESS_DEBUG: scope.context.WORDPRESS.env.debug || 'true',
+        WP_CLI_ALLOW_ROOT: 'true'
       },
       // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html
       secrets: {
