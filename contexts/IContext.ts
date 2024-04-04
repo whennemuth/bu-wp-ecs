@@ -3,19 +3,19 @@
  */
 
 export interface IContext {
-  SCENARIO:   SCENARIO;
-  STACK_ID:   string;
-  STACK_NAME: string;
-  PREFIXES:   Prefixes;
-  ACCOUNT:    string;
-  REGION:     string;
-  VPC_ID:     string;
-  CIDRS:      Cidrs;
-  SUBNETS:    Subnets;
-  DNS:        DNS;
-  S3PROXY:    S3Proxy;
-  WORDPRESS:  Wordpress;
-  TAGS:       Tags;
+  SCENARIO:           SCENARIO;
+  STACK_ID:           string;
+  STACK_NAME:         string;
+  PREFIXES:           Prefixes;
+  ACCOUNT:            string;
+  REGION:             string;
+  VPC_ID:             string;
+  CIDRS:              Cidrs;
+  SUBNETS?:           Subnets;
+  DNS?:               DNS;
+  S3PROXY:            S3Proxy;
+  WORDPRESS:          Wordpress;
+  TAGS:               Tags;
 }
 
 export enum SCENARIO {

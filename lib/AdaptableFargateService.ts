@@ -48,7 +48,7 @@ export abstract class AdaptableConstruct extends Construct {
    * @returns A certificate value indicates ssl.
    */
   useSSL(): boolean {
-    return this.context.DNS.certificateARN ? true : false;
+    return this.context?.DNS?.certificateARN ? true : false;
   }
   
   /**

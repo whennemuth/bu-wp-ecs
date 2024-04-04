@@ -24,7 +24,7 @@ export async function lookupCertificateArn(ServerCertificateName:string=IamServe
   const command = new GetServerCertificateCommand({ ServerCertificateName });
   try {
     const response = await client.send(command);
-    return response.ServerCertificate?.ServerCertificateMetadata?.Arn || '';
+    return response.ServerCertificate?.ServerCertificateMetadata!.Arn || '';
   }
   catch(e:any) {
     if(e.name === 'NoSuchEntityException') {
