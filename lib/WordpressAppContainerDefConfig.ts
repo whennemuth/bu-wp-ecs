@@ -3,26 +3,52 @@ import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { AdaptableConstruct } from './AdaptableFargateService';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { IContext } from '../contexts/IContext';
+import { WordpressS3ProxyContainerDefConfig } from './WordpressS3ProxyContainerDefConfig';
 
 export class WordpressAppContainerDefConfig {
 
-  public static HOST_PORT: number = 443;
-  public static CONTAINER_PORT: number = this.HOST_PORT;
+  // 
+  public static HOST_PORT: number = 80;
+  public static SSL_HOST_PORT: number = 443;
 
   public getProperties(scope: AdaptableConstruct) : ecs.ContainerDefinitionOptions {
+
+    const { context } = scope;
+    const { WORDPRESS:wp } = context as IContext;
+    const { HOST_PORT:hostPort, SSL_HOST_PORT:sslHostPort } = WordpressAppContainerDefConfig;
+    const { HOST_PORT:s3ProxyHostPort } = WordpressS3ProxyContainerDefConfig;
 
     const getRdsHost = () => {
       if(scope?.props?.rdsHostName) {
         return scope?.props?.rdsHostName;
       }
-      if(scope.context.WORDPRESS.env?.dbHost) {
-        return scope.context.WORDPRESS.env?.dbHost;
+      if(wp.env?.dbHost) {
+        return wp.env?.dbHost;
       }
       return 'db';
     }
+
+    // The container will ALWAYS be able to "talk" on port 80
+    // NOTE: The host port must be left out or must be the same as the container port for AwsVpc or Host network mode.
+    const portMappings = [{
+      containerPort: hostPort,
+      hostPort,
+      protocol: ecs.Protocol.TCP
+    }] as ecs.PortMapping[];
+
+    // The container will be able to "talk" over SSL if requests are not routed from cloudfront, 
+    // where cloudfront is performing ssl termination and viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS.
+    if( ! context.BEHIND_CLOUDFRONT) {
+      portMappings.push({
+        containerPort: sslHostPort,
+        hostPort: sslHostPort,
+        protocol: ecs.Protocol.TCP
+      } as ecs.PortMapping)
+    }
     
     return {
-      image: ecs.ContainerImage.fromRegistry(scope.context.WORDPRESS.dockerImage),
+      image: ecs.ContainerImage.fromRegistry(wp.dockerImage),
       containerName: 'wordpress',
       memoryReservationMiB: 1024,
       healthCheck: {
@@ -31,19 +57,7 @@ export class WordpressAppContainerDefConfig {
         startPeriod: Duration.seconds(5),
         retries: 3
       },
-      portMappings: [
-        // DOH! The order of port mappings is crucial. See gotchas readme file.
-        {
-          containerPort: 80,
-          hostPort: 80,
-          protocol: ecs.Protocol.TCP
-        },
-        {
-          containerPort: WordpressAppContainerDefConfig.HOST_PORT,
-          hostPort: WordpressAppContainerDefConfig.HOST_PORT,
-          protocol: ecs.Protocol.TCP
-        },
-      ],
+      portMappings,
       logging: ecs.LogDriver.awsLogs({ 
         logGroup: new LogGroup(scope, `${scope.id}-logs`, {
           removalPolicy: RemovalPolicy.DESTROY,
@@ -52,16 +66,16 @@ export class WordpressAppContainerDefConfig {
         streamPrefix: scope.id,
       }),
       environment: {
-        SERVER_NAME: scope.context.WORDPRESS.env.serverName,
-        SP_ENTITY_ID: scope.context.WORDPRESS.env.spEntityId,
-        IDP_ENTITY_ID: scope.context.WORDPRESS.env.idpEntityId,
-        TZ: scope.context.WORDPRESS.env.TZ,
-        S3PROXY_HOST: scope.context.WORDPRESS.env.s3ProxyHost || 'http://localhost:8080',
-        FORWARDED_FOR_HOST: scope.context.WORDPRESS.env.forwardedForHost,
+        SERVER_NAME: wp.env.serverName,
+        SP_ENTITY_ID: wp.env.spEntityId,
+        IDP_ENTITY_ID: wp.env.idpEntityId,
+        TZ: wp.env.TZ,
+        S3PROXY_HOST: wp.env.s3ProxyHost || `http://localhost:${s3ProxyHostPort}`,
+        FORWARDED_FOR_HOST: wp.env.forwardedForHost,
         WORDPRESS_DB_HOST: getRdsHost(),
-        WORDPRESS_DB_USER: scope.context.WORDPRESS.env.dbUser || 'root',
-        WORDPRESS_DB_NAME: scope.context.WORDPRESS.env.dbName || 'wp_db',
-        WORDPRESS_DEBUG: scope.context.WORDPRESS.env.debug || 'true',
+        WORDPRESS_DB_USER: wp.env.dbUser || 'root',
+        WORDPRESS_DB_NAME: wp.env.dbName || 'wp_db',
+        WORDPRESS_DEBUG: wp.env.debug || 'true',
         WP_CLI_ALLOW_ROOT: 'true'
       },
       // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html
@@ -69,30 +83,30 @@ export class WordpressAppContainerDefConfig {
         WORDPRESS_CONFIG_EXTRA: ecs.Secret.fromSecretsManager(
           Secret.fromSecretCompleteArn(
             scope, 
-            scope.context.WORDPRESS.secret.fields.configExtra, 
-            scope.context.WORDPRESS.secret.arn),
-          scope.context.WORDPRESS.secret.fields.configExtra,   
+            wp.secret.fields.configExtra, 
+            wp.secret.arn),
+          wp.secret.fields.configExtra,   
         ),
         WORDPRESS_DB_PASSWORD: ecs.Secret.fromSecretsManager(
           Secret.fromSecretCompleteArn(
             scope, 
-            scope.context.WORDPRESS.secret.fields.dbPassword, 
-            scope.context.WORDPRESS.secret.arn),
-          scope.context.WORDPRESS.secret.fields.dbPassword,  
+            wp.secret.fields.dbPassword, 
+            wp.secret.arn),
+          wp.secret.fields.dbPassword,  
         ),
         SHIB_SP_KEY: ecs.Secret.fromSecretsManager(
           Secret.fromSecretCompleteArn(
             scope, 
-            scope.context.WORDPRESS.secret.fields.spKey, 
-            scope.context.WORDPRESS.secret.arn),
-          scope.context.WORDPRESS.secret.fields.spKey,  
+            wp.secret.fields.spKey, 
+            wp.secret.arn),
+          wp.secret.fields.spKey,  
         ),
         SHIB_SP_CERT: ecs.Secret.fromSecretsManager(
           Secret.fromSecretCompleteArn(
             scope, 
-            scope.context.WORDPRESS.secret.fields.spCert, 
-            scope.context.WORDPRESS.secret.arn),
-          scope.context.WORDPRESS.secret.fields.spCert,  
+            wp.secret.fields.spCert, 
+            wp.secret.arn),
+          wp.secret.fields.spCert,  
         ),        
       }
     }

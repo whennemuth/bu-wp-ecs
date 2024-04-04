@@ -25,6 +25,7 @@
     "campus1": "subnet-06edbf07b7e07d73c",
     "campus2": "subnet-0032f03a478ee868b"
   },
+  "BEHIND_CLOUDFRONT": "false",
   "DNS": {
     "hostedZone": "kualitest.research.bu.edu",
     "certificateARN": "arn:aws:acm:us-east-1:770203350335:certificate/117fad49-d620-4bd3-a624-879f3fbd7ab7",

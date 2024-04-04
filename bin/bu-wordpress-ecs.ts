@@ -12,6 +12,7 @@ import { IVpc, IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { HostedZoneWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
 import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
 import { checkIamServerCertificate } from '../lib/Certificate';
+import { CloudfrontWordpressEcsConstruct } from '../lib/adaptations/WordpressBehindCloudfront';
 
 const app = new App();
 app.node.setContext('stack-parms', context);
@@ -122,6 +123,9 @@ async function getStandardCompositeInstance(stack: Stack, id: string, props?: an
   const context:IContext = stack.node.getContext('stack-parms');
   if(context?.DNS?.certificateARN && context?.DNS?.hostedZone) {
     return new HostedZoneWordpressEcsConstruct(stack, `${context.STACK_ID}-${context.PREFIXES.wordpress}`, props);
+  }
+  else if(context.BEHIND_CLOUDFRONT) {
+    return new CloudfrontWordpressEcsConstruct(stack, `${context.STACK_ID}-${context.PREFIXES.wordpress}`, props);
   }
   else if( ! context?.DNS?.certificateARN) {
     return checkIamServerCertificate().then(arn => {

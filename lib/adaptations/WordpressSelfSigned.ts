@@ -61,7 +61,7 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
       targets: [
         this.fargateService.service.loadBalancerTarget({
           containerName: `${this.containerDefProps.containerName}`,
-          containerPort: WordpressAppContainerDefConfig.CONTAINER_PORT,
+          containerPort: WordpressAppContainerDefConfig.SSL_HOST_PORT,
         })
       ],
       healthCheck: {
@@ -75,7 +75,7 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
     // ALTERNATIVE METHOD FOR HTTPS TARGET: 
     // this.fargateService.service.registerLoadBalancerTargets({
     //   containerName: `${this.containerDefProps.containerName}`,
-    //   containerPort: WordpressAppContainerDefConfig.CONTAINER_PORT,
+    //   containerPort: WordpressAppContainerDefConfig.SSL_HOST_PORT,
     //   newTargetGroupId: `${this.id}-https-tg`,
     //   listener: ListenerConfig.applicationListener(listener443, {
     //     protocol: ApplicationProtocol.HTTPS,
