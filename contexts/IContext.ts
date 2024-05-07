@@ -6,7 +6,6 @@ export interface IContext {
   SCENARIO:           SCENARIO;
   STACK_ID:           string;
   STACK_NAME:         string;
-  BEHIND_CLOUDFRONT?: boolean;
   PREFIXES:           Prefixes;
   ACCOUNT:            string;
   REGION:             string;
@@ -44,6 +43,7 @@ export interface Cidrs {
 export interface DNS {
   hostedZone:     string;
   certificateARN: string;
+  cloudfront:     boolean;
   includeRDS:     boolean;
 }
 
@@ -89,7 +89,7 @@ export interface WordpressEnv {
   dbUser:           string;
   dbName:           string;
   dbPort:           string;
-  debug:            string;
+  debug:            boolean;
 }
 
 export interface WordpressSecret {

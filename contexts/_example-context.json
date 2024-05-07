@@ -25,11 +25,11 @@
     "campus1": "subnet-06edbf07b7e07d73c",
     "campus2": "subnet-0032f03a478ee868b"
   },
-  "BEHIND_CLOUDFRONT": "false",
   "DNS": {
-    "hostedZone": "kualitest.research.bu.edu",
-    "certificateARN": "arn:aws:acm:us-east-1:770203350335:certificate/117fad49-d620-4bd3-a624-879f3fbd7ab7",
-    "includeRDS": "true"
+    "cloudfront": false,
+    "hostedZone": "webteam.bu.edu",
+    "certificateARN": "arn:aws:acm:us-east-1:037860335094:certificate/54d49c16-5fd2-4b07-af90-65c830cf7c04",
+    "includeRDS": true
   },
   "S3PROXY": {
     "dockerImage": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
@@ -45,7 +45,7 @@
       "forwardedForHost": "jaydub-bulb.cms-devl.bu.edu",
       "s3ProxyHost": "s3proxy.kualitest.research.bu.edu",
       "TZ": "America/New_York",
-      "debug": "true",
+      "debug": true,
       "dbType": "serverless",
       "dbUser": "root",
       "dbName": "wp_db",
