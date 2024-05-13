@@ -10,6 +10,9 @@ import { SecurityGroup } from "aws-cdk-lib/aws-ec2";
 import { SCENARIO as scenarios } from '../contexts/IContext';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
+import { CfnCacheCluster, CfnSubnetGroup } from 'aws-cdk-lib/aws-elasticache';
+import { Peer, Port } from 'aws-cdk-lib/aws-ec2';
+
 /**
  * Baseline class for the wordpresss application load balanced fargate service.
  * Subclasses will "adapt" this baseline in order to customize it. 
@@ -18,6 +21,8 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
   private _sidecarContainerDefProps: ContainerDefinitionOptions;
   private _securityGroup: SecurityGroup;
+  private _redisCluster: CfnCacheCluster;
+  private _redisClusterProps: any;
   
   constructor(scope: Construct, id: string, props?: any) {    
 
@@ -66,6 +71,8 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       description: 'Allows for ingress to the wordpress rds db from ecs tasks and selected vpn subnets.',
       allowAllOutbound: true,
     });  
+
+    this._securityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(6379), 'Allow inbound TCP traffic on the Redis port');
     
     this.fargateServiceProps = {
       serviceName: `${this.id}-service-${this.context.TAGS.Landscape}`,
@@ -87,6 +94,28 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       healthCheckGracePeriod: Duration.seconds(15),
       publicLoadBalancer: false,
     };
+
+    const vpc = this.getVpc();
+
+    // Make a subnet group for the redis cluster.
+    const redisSubnetGroup = new CfnSubnetGroup(this, `${this.id}-redis-subnet-group`, {
+      description: 'Subnet group for the redis cluster.',
+      subnetIds: vpc.privateSubnets.map( subnet => subnet.subnetId ),
+      cacheSubnetGroupName: `${this.id}-redis-subnet-group-name`,
+    });
+
+    // Setup properties for the redis cluster.
+    this._redisClusterProps = {
+      cacheNodeType: 'cache.t3.micro',
+      engine: 'redis',
+      numCacheNodes: 1,
+      vpcSecurityGroupIds: [ this._securityGroup.securityGroupId ],
+      cacheSubnetGroupName: redisSubnetGroup.cacheSubnetGroupName,
+    };
+
+    // Create the redis cluster, only after the subnet group is created.
+    this._redisCluster = new CfnCacheCluster(this, `${this.id}-redis-cluster`, this._redisClusterProps);
+    this._redisCluster.addDependency(redisSubnetGroup);
   }
 
   buildResources(): void {
@@ -95,7 +124,14 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
     const wordpressTaskDef = new FargateTaskDefinition(this, `${this.id}-taskdef`, this.taskDefProps);
 
-    wordpressTaskDef.addContainer(`${this.id}-taskdef-wp`, this.containerDefProps);
+    wordpressTaskDef.addContainer(`${this.id}-taskdef-wp`, {
+      ...this.containerDefProps,
+      environment: {
+        ...this.containerDefProps.environment,
+        REDIS_HOST: this._redisCluster.attrRedisEndpointAddress,
+        REDIS_PORT: this._redisCluster.attrRedisEndpointPort,
+      },
+    });
 
     if(this.includeSidecar()) {
       wordpressTaskDef.addContainer(`${this.id}-taskdef-s3proxy`, this._sidecarContainerDefProps);
@@ -135,6 +171,10 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
   public get securityGroup(): SecurityGroup {
     return this._securityGroup;
+  }
+
+  public get redisCluster(): CfnCacheCluster {
+    return this._redisCluster;
   }
 }
 
