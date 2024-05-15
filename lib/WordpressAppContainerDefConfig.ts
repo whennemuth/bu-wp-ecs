@@ -8,7 +8,6 @@ import { WordpressS3ProxyContainerDefConfig } from './WordpressS3ProxyContainerD
 
 export class WordpressAppContainerDefConfig {
 
-  // 
   public static HOST_PORT: number = 80;
   public static SSL_HOST_PORT: number = 443;
 
@@ -39,7 +38,7 @@ export class WordpressAppContainerDefConfig {
 
     // The container will be able to "talk" over SSL if requests are not routed from cloudfront, 
     // where cloudfront is performing ssl termination and viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS.
-    if( ! context.BEHIND_CLOUDFRONT) {
+    if( ! context.DNS?.cloudfront) {
       portMappings.push({
         containerPort: sslHostPort,
         hostPort: sslHostPort,
@@ -75,7 +74,7 @@ export class WordpressAppContainerDefConfig {
         WORDPRESS_DB_HOST: getRdsHost(),
         WORDPRESS_DB_USER: wp.env.dbUser || 'root',
         WORDPRESS_DB_NAME: wp.env.dbName || 'wp_db',
-        WORDPRESS_DEBUG: wp.env.debug || 'true',
+        WORDPRESS_DEBUG: `${wp.env.debug}`,
         WP_CLI_ALLOW_ROOT: 'true'
       },
       // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html

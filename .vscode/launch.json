@@ -13,7 +13,10 @@
       "args": [
         "${workspaceFolder}/bin/bu-wordpress-ecs.ts"
       ], 
-      "envFile": "${workspaceFolder}/.env"
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "AWS_PROFILE": "bu"
+      }   
     },
     {
       "type": "node",

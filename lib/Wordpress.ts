@@ -1,14 +1,14 @@
-import { AdaptableConstruct, FargateService } from './AdaptableFargateService';
-import { Duration, RemovalPolicy } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import { CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { SecurityGroup } from "aws-cdk-lib/aws-ec2";
+import { Cluster, ContainerDefinitionOptions, FargateTaskDefinition, PropagatedTagSource } from 'aws-cdk-lib/aws-ecs';
+import { ApplicationLoadBalancedFargateService as albfs, ApplicationLoadBalancedFargateServiceProps as albfsp } from 'aws-cdk-lib/aws-ecs-patterns';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { PropagatedTagSource, FargateTaskDefinition, ContainerDefinitionOptions, Cluster } from 'aws-cdk-lib/aws-ecs';
-import { ApplicationLoadBalancedFargateService as albfs } from 'aws-cdk-lib/aws-ecs-patterns';
+import { Construct } from 'constructs';
+import { SCENARIO as scenarios } from '../contexts/IContext';
+import { AdaptableConstruct, FargateService } from './AdaptableFargateService';
 import { WordpressAppContainerDefConfig } from './WordpressAppContainerDefConfig';
 import { WordpressS3ProxyContainerDefConfig } from './WordpressS3ProxyContainerDefConfig';
-import { SecurityGroup } from "aws-cdk-lib/aws-ec2";
-import { SCENARIO as scenarios } from '../contexts/IContext';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 /**
  * Baseline class for the wordpresss application load balanced fargate service.
@@ -52,30 +52,32 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
   setResourceProperties(): void {
 
+    const { id, context: { TAGS: { Landscape }}, getVpc } = this;
+
     this.containerDefProps = new WordpressAppContainerDefConfig().getProperties(this);
 
     if(this.includeSidecar()) {
       this._sidecarContainerDefProps = new WordpressS3ProxyContainerDefConfig().setPrefix('s3proxy').getProperties(this);
     }
     
-    this.taskDefProps = { family: this.id, cpu: 1024, memoryLimitMiB: 2048, };
+    this.taskDefProps = { family: id, cpu: 1024, memoryLimitMiB: 2048, };
 
-    this._securityGroup = new SecurityGroup(this, `${this.id}-fargate-sg`, {
-      vpc: this.getVpc(), 
-      securityGroupName: `wp-fargate-${this.context.TAGS.Landscape}-sg`,
+    this._securityGroup = new SecurityGroup(this, `${id}-fargate-sg`, {
+      vpc: getVpc(), 
+      securityGroupName: `wp-fargate-${Landscape}-sg`,
       description: 'Allows for ingress to the wordpress rds db from ecs tasks and selected vpn subnets.',
       allowAllOutbound: true,
     });  
     
     this.fargateServiceProps = {
-      serviceName: `${this.id}-service-${this.context.TAGS.Landscape}`,
-      cluster: new Cluster(this, `${this.id}-cluster`, {
-        clusterName: `${this.id}-cluster-${this.context.TAGS.Landscape}`,
+      serviceName: `${id}-service-${Landscape}`,
+      cluster: new Cluster(this, `${id}-cluster`, {
+        clusterName: `${id}-cluster-${Landscape}`,
         containerInsights: true,
-        vpc: this.getVpc()
+        vpc: getVpc()
       }),
       enableExecuteCommand: true,
-      loadBalancerName: `${this.id}-fargate-alb`,
+      loadBalancerName: `${id}-fargate-alb`,
       desiredCount: 1,
       minHealthyPercent: 100,
       maxHealthyPercent: 200,
@@ -86,34 +88,40 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       assignPublicIp: false,
       healthCheckGracePeriod: Duration.seconds(15),
       publicLoadBalancer: false,
-    };
+    } as albfsp;
   }
 
   buildResources(): void {
 
+    const { id, fargateServiceProps, containerDefProps, _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
+
     this.setStackTags();
 
-    const wordpressTaskDef = new FargateTaskDefinition(this, `${this.id}-taskdef`, this.taskDefProps);
+    const wordpressTaskDef = new FargateTaskDefinition(this, `${id}-taskdef`, taskDefProps);
 
-    wordpressTaskDef.addContainer(`${this.id}-taskdef-wp`, this.containerDefProps);
+    wordpressTaskDef.addContainer(`${id}-taskdef-wp`, containerDefProps);
 
     if(this.includeSidecar()) {
-      wordpressTaskDef.addContainer(`${this.id}-taskdef-s3proxy`, this._sidecarContainerDefProps);
+      wordpressTaskDef.addContainer(`${id}-taskdef-s3proxy`, _sidecarContainerDefProps);
     }
 
     this.fargateService = new albfs(
-      this, `${this.id}-fargate-service`, 
-      Object.assign(this.fargateServiceProps, { taskDefinition: wordpressTaskDef } )
+      this, `${id}-fargate-service`, 
+      Object.assign(fargateServiceProps, { taskDefinition: wordpressTaskDef } )
     );
 
-    this.fargateService.targetGroup.configureHealthCheck({
-      path: this.healthcheck,
+    const { fargateService: { loadBalancer, targetGroup, service: { taskDefinition } } } = this;
+
+    targetGroup.configureHealthCheck({
+      path: healthcheck,
       healthyThresholdCount: 3,
+      unhealthyThresholdCount: 10, // default 2
+      interval: Duration.seconds(15), // default 30 seconds
       healthyHttpCodes: '200-299',
     });
     
     // Get the ALB to log to a bucket
-    this.fargateService.loadBalancer.logAccessLogs(new Bucket(this, `${this.id}-alb-access-logs`, {
+    loadBalancer.logAccessLogs(new Bucket(this, `${id}-alb-access-logs`, {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true
     }));
@@ -121,7 +129,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
     // Grant the task definition the ability to:
     //   1) Pull docker images from the account ecr.
     //   2) Run shell access to containers
-    this.fargateService.service.taskDefinition.addToExecutionRolePolicy(new PolicyStatement({
+    taskDefinition.addToExecutionRolePolicy(new PolicyStatement({
       effect: Effect.ALLOW,
       resources: [ '*' ],
       actions: [
