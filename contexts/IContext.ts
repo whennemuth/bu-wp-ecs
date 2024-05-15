@@ -42,9 +42,15 @@ export interface Cidrs {
 
 export interface DNS {
   hostedZone:     string;
+  subdomain:      string;
   certificateARN: string;
-  cloudfront:     boolean;
+  cloudfront?:    Cloudfront;
   includeRDS:     boolean;
+}
+
+export interface Cloudfront {
+  challengeHeaderName: string;
+  challengeSecretFld:  string
 }
 
 export interface Prefixes {
@@ -78,7 +84,6 @@ export interface Wordpress {
 }
 
 export interface WordpressEnv {
-  serverName:       string;
   spEntityId:       string;
   idpEntityId:      string;
   forwardedForHost: string;

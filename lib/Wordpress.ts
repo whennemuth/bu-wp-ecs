@@ -7,6 +7,7 @@ import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { SCENARIO as scenarios } from '../contexts/IContext';
 import { AdaptableConstruct, FargateService } from './AdaptableFargateService';
+import { ParameterTester } from './Utils';
 import { WordpressAppContainerDefConfig } from './WordpressAppContainerDefConfig';
 import { WordpressS3ProxyContainerDefConfig } from './WordpressS3ProxyContainerDefConfig';
 
@@ -139,6 +140,25 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
         'ecr:GetAuthorizationToken',
       ]
     }));
+
+    const { noneBlank } = ParameterTester;
+    const { DNS } = this.context;
+    const { hostedZone, subdomain, certificateARN } = DNS || {};
+
+    if(noneBlank(hostedZone, subdomain, certificateARN)) {
+      // Ensure the HTTP_HOST wordpress container environment variable is the dns name of the route53 and cloudfront custom domain.
+      wordpressTaskDef.findContainer('wordpress')?.addEnvironment('HTTP_HOST', subdomain!);
+      wordpressTaskDef.findContainer('wordpress')?.addEnvironment('SERVER_NAME', subdomain!);
+      new CfnOutput(this.scope, 'CloudFrontDistributionURL', {
+        value: `https://${subdomain}`,
+        description: 'CloudFront Distribution URL',
+      });
+    }
+    else {
+      // Ensure the HTTP_HOST wordpress container environment variable is the dns name of the alb.
+      wordpressTaskDef.findContainer('wordpress')?.addEnvironment('HTTP_HOST', loadBalancer.loadBalancerDnsName);
+      wordpressTaskDef.findContainer('wordpress')?.addEnvironment('SERVER_NAME', loadBalancer.loadBalancerDnsName);
+    }
   }
 
   public get securityGroup(): SecurityGroup {

@@ -12,7 +12,7 @@ import { IVpc, IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { HostedZoneWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
 import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
 import { checkIamServerCertificate } from '../lib/Certificate';
-import { CloudfrontWordpressEcsConstruct } from '../lib/adaptations/WordpressBehindCloudfront';
+import { CloudfrontWordpressEcsConstruct, lookupCloudfrontHeaderChallenge, lookupCloudfrontPrefixListId } from '../lib/adaptations/WordpressBehindCloudfront';
 
 const app = new App();
 app.node.setContext('stack-parms', context);
@@ -130,6 +130,16 @@ async function getStandardCompositeInstance(stack: Stack, props?: any): Promise<
       Object.assign(props, { iamServerCertArn: arn })
       return new SelfSignedWordpressEcsConstruct(stack, wpId, props);
     });    
+  }
+
+  if(cloudfront) {
+    props['cloudfront-prefix-id'] = await lookupCloudfrontPrefixListId(context.REGION);
+    props['cloudfront-challenge'] = await lookupCloudfrontHeaderChallenge(secretArn, challengeSecretFld);
+    return new CloudfrontWordpressEcsConstruct(stack, wpId, props);
+  }
+
+  if(hostedZone) {
+    return new HostedZoneWordpressEcsConstruct(stack, wpId, props);
   }
 
   console.log("WARNING: This fargate service will not be publicly addressable. " + 
