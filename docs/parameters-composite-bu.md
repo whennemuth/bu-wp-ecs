@@ -45,7 +45,6 @@ Parameters to deploy a Boston University wordpress service, including the databa
   "WORDPRESS": {
     "dockerImage": "770203350335.dkr.ecr.us-east-1.amazonaws.com/wrhtest:jaydub-bulb",
     "env": {
-      "serverName": "dev.kualitest.research.bu.edu",
       "spEntityId": "https://*.kualitest.research.bu.edu/shibboleth",
       "idpEntityId": "https://shib-test.bu.edu/idp/shibboleth",
       "forwardedForHost": "jaydub-bulb.cms-devl.bu.edu",

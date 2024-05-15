@@ -10,7 +10,7 @@ export interface IContext {
   ACCOUNT:            string;
   REGION:             string;
   VPC_ID:             string;
-  CIDRS:              Cidrs;
+  CIDRS?:              Cidrs;
   SUBNETS?:           Subnets;
   DNS?:               DNS;
   S3PROXY:            S3Proxy;
@@ -84,17 +84,17 @@ export interface Wordpress {
 }
 
 export interface WordpressEnv {
-  spEntityId:       string;
-  idpEntityId:      string;
-  forwardedForHost: string;
-  s3ProxyHost:      string;
-  TZ:               string;
-  dbType:           WORDPRESS_DB_TYPE;
-  dbHost:           string;
-  dbUser:           string;
-  dbName:           string;
-  dbPort:           string;
-  debug:            boolean;
+  spEntityId?:       string;
+  idpEntityId?:      string;
+  forwardedForHost?: string;
+  s3ProxyHost?:      string;
+  TZ:                string;
+  dbType:            WORDPRESS_DB_TYPE;
+  dbHost:            string;
+  dbUser:            string;
+  dbName:            string;
+  dbPort:            string;
+  debug:             boolean;
 }
 
 export interface WordpressSecret {

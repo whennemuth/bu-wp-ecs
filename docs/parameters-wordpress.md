@@ -23,7 +23,6 @@ Parameters to deploy a standalone wordpress fargate service *(database and s3pro
   "WORDPRESS": {
     "dockerImage": "037860335094.dkr.ecr.us-east-2.amazonaws.com/bu-wordpress-baseline:latest",
     "env": {
-      "serverName": "dev.kualitest.research.bu.edu",
       "spEntityId": "https://*.kualitest.research.bu.edu/shibboleth",
       "idpEntityId": "https://shib-test.bu.edu/idp/shibboleth",
       "forwardedForHost": "jaydub-bulb.cms-devl.bu.edu",

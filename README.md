@@ -53,15 +53,15 @@ TODO: Include architectural explanation and diagram here.
 
    ```
    mkdir ./cdk.out 2> /dev/null
-   cdk synth --profile my_named_profile &> cdk.out/S3ProxyFargateStack.template.yaml
+   npm run synth
    ```
 
-   *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a yaml file alongside the json file.*
+   *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a ./cdk.out/Stack.yaml.*
 
 3. Run the [CDK deploy command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-deploy) to create the stack:
 
    ```
-   cdk deploy --profile my_named_profile --no-rollback
+   npm run deploy
    ```
    
 7. Visit the wordpress site.
