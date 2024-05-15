@@ -65,7 +65,6 @@ export class WordpressAppContainerDefConfig {
         streamPrefix: scope.id,
       }),
       environment: {
-        SERVER_NAME: wp.env.serverName,
         SP_ENTITY_ID: wp.env.spEntityId,
         IDP_ENTITY_ID: wp.env.idpEntityId,
         TZ: wp.env.TZ,

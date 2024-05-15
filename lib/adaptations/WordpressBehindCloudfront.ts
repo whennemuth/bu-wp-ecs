@@ -24,13 +24,7 @@ export class CloudfrontWordpressEcsConstruct extends WordpressEcsConstruct {
       publicLoadBalancer: false,
       loadBalancerName: undefined,
       loadBalancer: alb,
-   });
-
-    // The apache service running in the wordpress container needs to have a virtual host server name 
-    // that matches the alb public address
-    if(this.containerDefProps?.environment) {
-      Object.assign(this.containerDefProps.environment, { SERVER_NAME: alb.loadBalancerDnsName });
-    }
+    });
   }
 
   adaptResources(): void {
