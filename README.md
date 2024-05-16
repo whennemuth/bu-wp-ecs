@@ -91,9 +91,25 @@ TODO: Include architectural explanation and diagram here.
 
    
 
-
 ### Notes
 
+**Shibboleth SP:**
+In a BU wordpress fargate stack, the shibboleth SP can reside in one of two places:
+
+1. Mod_shib: The traditional setup in which wordpress containers running apache would have mod_shib installed, and authentication with shibboleth would be carried out from within.
+2. A newer option is available to build the Fargate cluster such that the Wordpress containers running in it no longer involve themselves with being saml SP clients to shibboleth using the mod_shib module. A DNS option has been added to context parameters to opt for this situation be serviced by a pre-existing Cloudfront distribution that takes over this saml client role. Currently, this Cloudfront distribution is created in a separate CDK stack and it should be  configured to target the ALB of this stack, once it becomes available, as an origin. A lambda@edge origin request function within this separate stack processes all incoming requests and carries out the saml negotiations with the BU shibboleth IDP. This has a few implications:
+   1. Certificates.
+      Cloudfront is a global resource and so will always address an ALB origin over the internet. This means that the ALB must be internet facing and will need to take traffic encrypted with the same certificate that is used for the domain of the Cloudfront distribution. For example, if a the Cloudfront distribution is reachable on https://dev.mydomain.com, then the corresponding certificate - probably with CN *.mydomain.com - will reside in ACM in the same account as the Cloudfront distribution and will need to be requested again from the domain registrar into ACM for the account and region of the ALB. If this certificate is not applied to the ALB, the Cloudfront distribution responds with a 502 error.
+   2. Security.
+      Since the ALB must be internet facing, it must be locked down. In addition to only responding to https traffic, two additional measures are taken:
+      1. The security group for the ALB must allow only ingress from Cloudfront IP address for the region of the distribution.
+         A [Managed Prefix List](https://aws.amazon.com/blogs/networking-and-content-delivery/limit-access-to-your-origins-using-the-aws-managed-prefix-list-for-amazon-cloudfront/) for cloudfront is applied to the ALB security group as the only ingress rule.
+      2. With ingress to the ALB restricted to the cloudfront service, now it must be further restricted to the specific SAML SP distribution.
+         This distribution is configured to add a "secret" header value to each request it forwards to the ALB origin. The ALB is configured with a listener rule that allows through only requests that have this header and that its value matches the expected value. This approach is a standard AWS practice and is detailed here: [Restricting access to Application Load Balancers](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/restrict-access-to-load-balancer.html)
+   3. The Wordpress docker image.
+      A docker image for BU wordpress must be specified in context.json that corresponds to something that was built against a manifest ini file that reflects modifications certain plugins and php that "assumes" the SP is still in the container. Specifically, weblogin.php is redirected to as usual, but it now looks for certain headers that identify login and logout urls and it simply delegates authentication by redirecting to these locations, which get intercepted by the cloudfront lambda@edge function, which identifies them by path as something it should take over.
+
+**Miscellaneous:**
 Some discoveries specific to certain AWS services and related items were found to be of help in development of this project, and are worth noting separately. Also, a more detailed explanation and reasoning behind approaches taken is included. 
 
 - [Stack Parameters](./docs/parameters.md)
