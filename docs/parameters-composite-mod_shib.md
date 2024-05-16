@@ -18,16 +18,6 @@ The main wordpress container is performing the shibboleth client role and it is 
   },
   "ACCOUNT": "037860335094",
   "REGION": "us-east-2",
-  "DNS": {
-    "hostedZone": "warhen.work",
-    "subdomain": "wp1.warhen.work",
-    "certificateARN": "arn:aws:acm:us-east-2:037860335094:certificate/f95a0e60-a924-4fdb-9cd2-1f5dc872ab99",
-    "cloudfront": {
-      "challengeHeaderName": "cloudfront-challenge",
-      "challengeSecretFld": "cloudfront-challenge"
-    },
-    "includeRDS": false
-  },
   "S3PROXY": {
     "dockerImage": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
     "bucketUserSecretName": "wordpress-protected-s3-assets-dev-user/AccessKey",
