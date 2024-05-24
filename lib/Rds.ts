@@ -58,7 +58,7 @@ export class BuWordpressRdsConstruct extends Construct {
           vpc: this.vpc,
           vpcSubnets: { subnetType: SubnetType.PUBLIC },
           engine: DatabaseInstanceEngine.mysql({
-            version: MysqlEngineVersion.VER_5_7_43
+            version: MysqlEngineVersion.VER_5_7
           }),
           // enablePerformanceInsights: true,
           copyTagsToSnapshot: true,
