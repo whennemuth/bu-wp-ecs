@@ -81,9 +81,12 @@ export class Adaptations {
     });
 
     // Add subnet ingress rules
-    for (const [key, value] of Object.entries(this.construct.context.CIDRS)) {
-      sg.addIngressRule(Peer.ipv4(<string>value), Port.tcp(containerDefConfig.SSL_HOST_PORT))
-      console.log(`${key}: ${value}`);
+    const CIDRS = this.construct.context.CIDRS;
+    if (CIDRS) {
+      for (const [key, value] of Object.entries(CIDRS)) {
+        sg.addIngressRule(Peer.ipv4(<string>value), Port.tcp(containerDefConfig.SSL_HOST_PORT))
+        console.log(`${key}: ${value}`);
+      }
     }
     return [ sg ];
   }
