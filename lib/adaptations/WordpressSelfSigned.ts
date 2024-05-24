@@ -31,12 +31,6 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
       loadBalancerName: undefined,
       loadBalancer: alb,
    });
-
-    // The apache service running in the wordpress container needs to have a virtual host server name 
-    // that matches the alb public address
-    if(this.containerDefProps?.environment) {
-      Object.assign(this.containerDefProps.environment, { SERVER_NAME: alb.loadBalancerDnsName });
-    }
   }
 
   /**
@@ -61,7 +55,7 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
       targets: [
         this.fargateService.service.loadBalancerTarget({
           containerName: `${this.containerDefProps.containerName}`,
-          containerPort: WordpressAppContainerDefConfig.CONTAINER_PORT,
+          containerPort: WordpressAppContainerDefConfig.SSL_HOST_PORT,
         })
       ],
       healthCheck: {
@@ -75,7 +69,7 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
     // ALTERNATIVE METHOD FOR HTTPS TARGET: 
     // this.fargateService.service.registerLoadBalancerTargets({
     //   containerName: `${this.containerDefProps.containerName}`,
-    //   containerPort: WordpressAppContainerDefConfig.CONTAINER_PORT,
+    //   containerPort: WordpressAppContainerDefConfig.SSL_HOST_PORT,
     //   newTargetGroupId: `${this.id}-https-tg`,
     //   listener: ListenerConfig.applicationListener(listener443, {
     //     protocol: ApplicationProtocol.HTTPS,

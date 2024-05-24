@@ -5,6 +5,7 @@ import { Cluster, ScalableTaskCount} from 'aws-cdk-lib/aws-ecs';
 import { WordpressAppContainerDefConfig as containerDefConfig } from '../WordpressAppContainerDefConfig';
 import { Schedule } from 'aws-cdk-lib/aws-applicationautoscaling'
 import { AdaptableConstruct } from '../AdaptableFargateService';
+import { IContext, Subnets } from '../../contexts/IContext';
 
 /**
  * This is the BU adaptation to the standard wordpress construct. All mutation of that baseline 
@@ -43,9 +44,13 @@ export class BuWordpressEcsConstruct extends WordpressEcsConstruct {
 export class Adaptations {
   private construct:AdaptableConstruct;
   private vpc:Vpc;
+  private subnets:Subnets = {} as Subnets;
+  private context:IContext;
 
   constructor(construct:AdaptableConstruct) {
     this.construct = construct;
+    const context = (this.construct as AdaptableConstruct).context;
+    this.subnets = context?.SUBNETS || {} as Subnets ;
   }
 
   public getCluster(): Cluster {
@@ -58,10 +63,12 @@ export class Adaptations {
 
   public getSubnetSelection(): SubnetSelection {
     const self: AdaptableConstruct = this.construct;
+    const campus1 = this.subnets?.campus1;
+    const campus2 = this.subnets?.campus2;
     const subsln = new class subsln implements SubnetSelection {
       subnets = [
-        Subnet.fromSubnetId(self, 'subnet1', self.context.SUBNETS.campus1),
-        Subnet.fromSubnetId(self, 'subnet2', self.context.SUBNETS.campus2)
+        Subnet.fromSubnetId(self, 'subnet1', campus1),
+        Subnet.fromSubnetId(self, 'subnet2', campus2)
       ];
     };
     return subsln;
@@ -75,7 +82,7 @@ export class Adaptations {
 
     // Add subnet ingress rules
     for (const [key, value] of Object.entries(this.construct.context.CIDRS)) {
-      sg.addIngressRule(Peer.ipv4(<string>value), Port.tcp(containerDefConfig.HOST_PORT))
+      sg.addIngressRule(Peer.ipv4(<string>value), Port.tcp(containerDefConfig.SSL_HOST_PORT))
       console.log(`${key}: ${value}`);
     }
     return [ sg ];

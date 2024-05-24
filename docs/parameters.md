@@ -86,4 +86,5 @@ Depending on the scenario that applies, only a subset of the following parameter
 - [Standard standalone s3proxy service](./parameters-s3proxy.md) *(no wordpress, database, etc)*:
 - [Standard standalone wordpress service](./parameters-wordpress.md) *(database and s3proxy service must pre-exist and whose details must be included)*.
 - [Standard composite service](./parameters-composite.md) *(database is also created along with the s3proxy service as a ["sidecar"](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/fargate-security-considerations.html))*
+- [Standard composit service with mod_shib](./parameters-composite-mod_shib.md) *(same as Standard composite service, but the wordpress container performs the shibboleth client services)*
 - [Adapted composite service](./parameters-composite-bu.md) *(Same as standard composite service, but with adaptations specific to the bu common security services aws account)*

@@ -3,19 +3,19 @@
  */
 
 export interface IContext {
-  SCENARIO:   SCENARIO;
-  STACK_ID:   string;
-  STACK_NAME: string;
-  PREFIXES:   Prefixes;
-  ACCOUNT:    string;
-  REGION:     string;
-  VPC_ID:     string;
-  CIDRS:      Cidrs;
-  SUBNETS:    Subnets;
-  DNS:        DNS;
-  S3PROXY:    S3Proxy;
-  WORDPRESS:  Wordpress;
-  TAGS:       Tags;
+  SCENARIO:           SCENARIO;
+  STACK_ID:           string;
+  STACK_NAME:         string;
+  PREFIXES:           Prefixes;
+  ACCOUNT:            string;
+  REGION:             string;
+  VPC_ID:             string;
+  CIDRS?:              Cidrs;
+  SUBNETS?:           Subnets;
+  DNS?:               DNS;
+  S3PROXY:            S3Proxy;
+  WORDPRESS:          Wordpress;
+  TAGS:               Tags;
 }
 
 export enum SCENARIO {
@@ -42,8 +42,15 @@ export interface Cidrs {
 
 export interface DNS {
   hostedZone:     string;
+  subdomain:      string;
   certificateARN: string;
+  cloudfront?:    Cloudfront;
   includeRDS:     boolean;
+}
+
+export interface Cloudfront {
+  challengeHeaderName: string;
+  challengeSecretFld:  string
 }
 
 export interface Prefixes {
@@ -77,18 +84,17 @@ export interface Wordpress {
 }
 
 export interface WordpressEnv {
-  serverName:       string;
-  spEntityId:       string;
-  idpEntityId:      string;
-  forwardedForHost: string;
-  s3ProxyHost:      string;
-  TZ:               string;
-  dbType:           WORDPRESS_DB_TYPE;
-  dbHost:           string;
-  dbUser:           string;
-  dbName:           string;
-  dbPort:           string;
-  debug:            string;
+  spEntityId?:       string;
+  idpEntityId?:      string;
+  forwardedForHost?: string;
+  s3ProxyHost?:      string;
+  TZ:                string;
+  dbType:            WORDPRESS_DB_TYPE;
+  dbHost:            string;
+  dbUser:            string;
+  dbName:            string;
+  dbPort:            string;
+  debug:             boolean;
 }
 
 export interface WordpressSecret {

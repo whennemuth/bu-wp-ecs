@@ -6,17 +6,22 @@ import { ApplicationLoadBalancedServiceRecordType } from "aws-cdk-lib/aws-ecs-pa
 
 export class HostedZoneWordpressEcsConstruct extends WordpressEcsConstruct {
 
+  private certArn = '' as string;
+  private hostedZone = '' as string;
+  
   constructor(baseline: Stack, id: string, props?: any) {
     super(baseline, id, props);
+    this.certArn = this.context?.DNS?.certificateARN || '';
+    this.hostedZone = this.context?.DNS?.hostedZone || '';
   }
 
   adaptResourceProperties(): void {
     const certificate:ICertificate = Certificate.fromCertificateArn(
       this, 
       `${this.id}-acm-cert`, 
-      this.context.DNS.certificateARN
+      this.certArn
     );
-    const domainName:string = this.context.DNS.hostedZone;
+    const domainName:string = this.hostedZone;
     const domainZone:IHostedZone = HostedZone.fromLookup(this, 'Zone', { domainName });
 
     // TODO: Haven't tried this out yet - don't know if it will work. Requires a pre-existing acm cert and route53 hosted zone.

@@ -19,6 +19,7 @@ export class WordpressS3ProxyContainerDefConfig {
     
     const host=`${scope.context.S3PROXY.OLAP}-${scope.context.ACCOUNT}.${olap_service}.${scope.context.REGION}.amazonaws.com`;
     const prfx = this.prefix || scope.id;
+    const { HOST_PORT:hostPort, HOST_PORT:containerPort } = WordpressS3ProxyContainerDefConfig;
 
     return {
       image: ecs.ContainerImage.fromRegistry(scope.context.S3PROXY.dockerImage),
@@ -39,8 +40,8 @@ export class WordpressS3ProxyContainerDefConfig {
         '--no-verify-ssl'
       ],
       portMappings: [{
-        containerPort: WordpressS3ProxyContainerDefConfig.HOST_PORT,
-        hostPort: WordpressS3ProxyContainerDefConfig.HOST_PORT,
+        hostPort,
+        containerPort,
         protocol: ecs.Protocol.TCP
       }],
       logging: ecs.LogDriver.awsLogs({ 

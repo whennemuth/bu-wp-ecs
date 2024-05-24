@@ -68,7 +68,7 @@ export class BuS3ProxyEc2Stack extends Stack {
   }
 
   private useSSL(stack: BuS3ProxyEc2Stack): boolean {
-    if( ! stack.context.DNS.hostedZone ) return false;
+    if( ! stack.context?.DNS?.hostedZone ) return false;
     if( ! stack.context.S3PROXY.recordName ) return false;
     if( ! stack.context.DNS.certificateARN ) return false;
     return true;
@@ -92,8 +92,8 @@ export class BuS3ProxyEc2Stack extends Stack {
   private setSubnets(stack: BuS3ProxyEc2Stack) {
     stack.subsln = new class subsln implements ec2.SubnetSelection {
       subnets = [
-        ec2.Subnet.fromSubnetId(stack, 'subnet1', stack.context.SUBNETS.campus1),
-        ec2.Subnet.fromSubnetId(stack, 'subnet2', stack.context.SUBNETS.campus2)
+        ec2.Subnet.fromSubnetId(stack, 'subnet1', stack.context?.SUBNETS!.campus1),
+        ec2.Subnet.fromSubnetId(stack, 'subnet2', stack.context?.SUBNETS!.campus2)
       ];
     }
   }
@@ -339,7 +339,7 @@ export class BuS3ProxyEc2Stack extends Stack {
     let listener_port = sigv4_host_port;
 
     if(this.useSSL(stack)) {
-      const hostedZone = route53.HostedZone.fromLookup(stack, 'Zone', { domainName: stack.context.DNS.hostedZone });
+      const hostedZone = route53.HostedZone.fromLookup(stack, 'Zone', { domainName: stack.context?.DNS!.hostedZone });
       new route53.ARecord(stack, 'AliasRecord', {
         zone: hostedZone,
         recordName: stack.context.S3PROXY.recordName,
@@ -347,7 +347,7 @@ export class BuS3ProxyEc2Stack extends Stack {
       });
 
       listener_port = 443;
-      listener_certificates.push({ certificateArn: stack.context.DNS.certificateARN });
+      listener_certificates.push({ certificateArn: stack.context?.DNS!.certificateARN });
     }
 
     stack.sslListener = stack.alb.addListener(`${sigv4_prefix}-listener'`, { 

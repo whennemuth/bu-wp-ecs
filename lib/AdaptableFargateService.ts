@@ -48,14 +48,14 @@ export abstract class AdaptableConstruct extends Construct {
    * @returns A certificate value indicates ssl.
    */
   useSSL(): boolean {
-    return this.context.DNS.certificateARN ? true : false;
+    return this.context?.DNS?.certificateARN ? true : false;
   }
   
   /**
    * Get the vpc by checking for it in the properties supplied to the construct, else look it up using the
    * VPC_ID context value, resorting to creating a new vpc if either return no vpc.
    */
-  public getVpc(): Vpc {
+  public getVpc = (): Vpc => {
     if(this.vpc) {
       return this.vpc;
     }
