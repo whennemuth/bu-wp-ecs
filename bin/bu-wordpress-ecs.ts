@@ -121,8 +121,8 @@ switch(context.SCENARIO.toLowerCase()) {
 */
 async function getStandardCompositeInstance(stack: Stack, props?: any): Promise<WordpressEcsConstruct> {
   const context:IContext = stack.node.getContext('stack-parms');
-  const { hostedZone, certificateARN, cloudfront } = context?.DNS!;
-  const { challengeSecretFld } = cloudfront!;
+  const { hostedZone, certificateARN, cloudfront } = context?.DNS ?? {};
+  const { challengeSecretFld } = cloudfront ?? {};
   const { WORDPRESS: { secret: { arn:secretArn }}} = context;
 
   if( ! certificateARN) {
@@ -132,7 +132,7 @@ async function getStandardCompositeInstance(stack: Stack, props?: any): Promise<
     });    
   }
 
-  if(cloudfront) {
+  if(cloudfront && challengeSecretFld) {
     props['cloudfront-prefix-id'] = await lookupCloudfrontPrefixListId(context.REGION);
     props['cloudfront-challenge'] = await lookupCloudfrontHeaderChallenge(secretArn, challengeSecretFld);
     return new CloudfrontWordpressEcsConstruct(stack, wpId, props);
