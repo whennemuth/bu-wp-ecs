@@ -5,7 +5,6 @@ import { IContext, SCENARIO as scenarios } from '../contexts/IContext';
 import { StandardS3ProxyConstruct } from '../lib/S3Proxy';
 import { StandardWordpressConstruct, WordpressEcsConstruct } from '../lib/Wordpress';
 import { BuWordpressEcsConstruct as BuWordpressConstruct } from '../lib/adaptations/WordpressBU';
-import { BuWordpressS3ProxyEcsConstruct as BuS3ProxyConstruct } from '../lib/adaptations/S3ProxyBU';
 import { BuWordpressRdsConstruct as RdsConstruct } from '../lib/Rds';
 import { IVpc, IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { HostedZoneWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
@@ -88,10 +87,6 @@ switch(context.SCENARIO.toLowerCase()) {
    */
   case scenarios.S3PROXY: 
     new StandardS3ProxyConstruct(new Stack(app, 'S3ProxyStack', stackProps), s3ProxyId);
-    break;
-
-  case scenarios.S3PROXY_BU:
-    new BuS3ProxyConstruct(new Stack(app, 'S3ProxyStack', stackProps), s3ProxyId);
     break;
 }
 
