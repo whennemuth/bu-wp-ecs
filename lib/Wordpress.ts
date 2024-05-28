@@ -82,7 +82,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
   buildResources(): void {
 
-    const { id, fargateServiceProps, containerDefProps, context: { WORDPRESS },
+    const { id, fargateServiceProps, containerDefProps, context: { WORDPRESS }, setTaskAutoScaling,
        sidecarContainerDefProps: _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
 
     this.setStackTags();
@@ -148,6 +148,8 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       wordpressTaskDef.findContainer('wordpress')?.addEnvironment('HTTP_HOST', loadBalancer.loadBalancerDnsName);
       wordpressTaskDef.findContainer('wordpress')?.addEnvironment('SERVER_NAME', loadBalancer.loadBalancerDnsName);
     }
+
+    setTaskAutoScaling();
   }
 
   public get securityGroup(): SecurityGroup {

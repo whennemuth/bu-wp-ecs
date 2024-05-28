@@ -108,8 +108,6 @@ export class CloudfrontWordpressEcsConstruct extends WordpressEcsConstruct {
       StatusCode: '403'
     };
     defaultListener.addPropertyOverride('DefaultActions.0.FixedResponseConfig', fixedResponseConfig);
-
-    this.setTaskAutoScaling();
   }
 }
 

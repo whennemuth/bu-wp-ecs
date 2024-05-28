@@ -51,7 +51,14 @@ export abstract class AdaptableConstruct extends Construct {
     return this.context?.DNS?.certificateARN ? true : false;
   }
 
+  /**
+   * Set custom autoscaling for the fargate service.
+   * @returns 
+   */
   public setTaskAutoScaling = (): void => {
+    const { AUTOSCALING=false } = this.context;
+    if( ! AUTOSCALING ) return;
+
     const stc: ScalableTaskCount = this.fargateService.service.autoScaleTaskCount({
       // The lower boundary to which service auto scaling can adjust the desired count of the service.
       minCapacity: 2,

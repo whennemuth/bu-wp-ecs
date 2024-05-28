@@ -26,6 +26,7 @@ Conflicting or mutually exclusive parameter combinations will be caught by valid
 - PREFIXES: Mid-level string identifier for specific constructs *(wordpress, s3proxy, rds)*
 - ACCOUNT: The number of the aws account being deployed to.
 - REGION: The region being deployed to.
+- AUTOSCALING: *defaults to `false`*. When `false` a rudimentary auto-scaling policy applies with a desired count of 1 container that can be scaled up to 2 containers if resource consumption for CPU and/or memory exceeds 50%. When `true`, a custom target tracking policy applies that can scale up to 10 containers, with a supplementary scheduled policy to reduce the desired count down during the weekend. Currently, this custom policy is arbitrary and serves mostly as an example of what scaling policy could be.
 - DNS:
   - hostedZone: The name of a preexisting hosted zone for which a new "A" record will created to route traffic to the ALB created for wordpress.
   - includeRDS: Add a new record to the wordpress route53 hosted zone for the  the RDS database. This will allow for addressing connections to the database using something like `"dev.db.warhen.work"`as an alternative to the automatically assigned socket address.

@@ -11,6 +11,7 @@ export interface IContext {
   DNS?:               DNS;
   S3PROXY:            S3Proxy;
   WORDPRESS:          Wordpress;
+  AUTOSCALING?:       boolean;
   TAGS:               Tags;
 }
 

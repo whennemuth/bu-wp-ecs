@@ -36,7 +36,5 @@ export class HostedZoneWordpressEcsConstruct extends WordpressEcsConstruct {
      });
   }
 
-  adaptResources(): void {
-    this.setTaskAutoScaling();
-  }
+  adaptResources(): void { /** Do nothing */ }
 }
