@@ -17,7 +17,6 @@ import { WordpressS3ProxyContainerDefConfig } from './WordpressS3ProxyContainerD
 export abstract class WordpressEcsConstruct extends AdaptableConstruct implements FargateService {
 
   private sidecarContainerDefProps: ContainerDefinitionOptions;
-  private _securityGroup: SecurityGroup;
   
   constructor(scope: Construct, id: string, props?: any) {    
 
@@ -83,7 +82,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
   buildResources(): void {
 
     const { id, fargateServiceProps, containerDefProps, context: { WORDPRESS }, setTaskAutoScaling,
-       sidecarContainerDefProps: _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
+       setRedisCaching, sidecarContainerDefProps: _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
 
     this.setStackTags();
 
@@ -150,6 +149,8 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
     }
 
     setTaskAutoScaling();
+
+    setRedisCaching(wordpressTaskDef);
   }
 
   public get securityGroup(): SecurityGroup {

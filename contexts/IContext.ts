@@ -12,6 +12,7 @@ export interface IContext {
   S3PROXY:            S3Proxy;
   WORDPRESS:          Wordpress;
   AUTOSCALING?:       boolean;
+  REDIS?:             Redis;
   TAGS:               Tags;
 }
 
@@ -26,6 +27,11 @@ export interface DNS {
 export interface Cloudfront {
   challengeHeaderName: string;
   challengeSecretFld:  string
+}
+
+export interface Redis {
+  cacheNodeType?: string,
+  numCacheNodes?: number,
 }
 
 export interface Prefixes {

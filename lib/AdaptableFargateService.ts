@@ -1,10 +1,11 @@
 import { Duration, Stack } from 'aws-cdk-lib';
 import { Schedule } from 'aws-cdk-lib/aws-applicationautoscaling';
-import { Vpc } from 'aws-cdk-lib/aws-ec2';
-import { ContainerDefinitionOptions, FargateTaskDefinitionProps, ScalableTaskCount } from 'aws-cdk-lib/aws-ecs';
+import { Peer, Port, SecurityGroup, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { ContainerDefinitionOptions, FargateTaskDefinition, FargateTaskDefinitionProps, ScalableTaskCount } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService as albfs, ApplicationLoadBalancedFargateServiceProps as albfsp } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Construct } from 'constructs';
 import { IContext } from '../contexts/IContext';
+import { CfnCacheCluster, CfnSubnetGroup } from 'aws-cdk-lib/aws-elasticache';
 
 /**
  * Any fargate service will perform two steps.
@@ -25,6 +26,7 @@ export abstract class AdaptableConstruct extends Construct {
   healthcheck: string;
   scope: Construct;
   context: IContext;
+  _securityGroup: SecurityGroup;
 
   vpc: Vpc;
   containerDefProps: ContainerDefinitionOptions;
@@ -97,6 +99,45 @@ export abstract class AdaptableConstruct extends Construct {
       schedule: Schedule.cron({ hour: '20', minute: '0', weekDay: '1-5' }),
       minCapacity: 1
     });  
+  }
+
+  /**
+   * Set redis caching for the wordpress service.
+   * @param wordpressTaskDef 
+   * @returns 
+   */
+  public setRedisCaching = (wordpressTaskDef:FargateTaskDefinition): void => {
+    const { vpc, context: { REDIS } } = this;
+    if( ! REDIS ) return;
+
+    const { cacheNodeType='cache.t3.micro', numCacheNodes=1 } = REDIS; // Set defaults
+
+    this._securityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(6379), 'Allow inbound TCP traffic on the Redis port');
+    
+    // Make a subnet group for the redis cluster.
+    const redisSubnetGroup = new CfnSubnetGroup(this, `${this.id}-redis-subnet-group`, {
+      description: 'Subnet group for the redis cluster.',
+      subnetIds: vpc.privateSubnets.map( subnet => subnet.subnetId ),
+      cacheSubnetGroupName: `${this.id}-redis-subnet-group-name`,
+    });
+
+    // Setup properties for the redis cluster.
+    const redisClusterProps = {
+      cacheNodeType,
+      engine: 'redis',
+      numCacheNodes,
+      vpcSecurityGroupIds: [ this._securityGroup.securityGroupId ],
+      cacheSubnetGroupName: redisSubnetGroup.cacheSubnetGroupName,
+    };
+
+    // Create the redis cluster, only after the subnet group is created.
+    const redisCluster = new CfnCacheCluster(this, `${this.id}-redis-cluster`, redisClusterProps);
+    redisCluster.addDependency(redisSubnetGroup);
+
+    // The wordpress container needs to find details of redis in its environment.
+    const wpContainer = wordpressTaskDef.findContainer('wordpress');
+    wpContainer?.addEnvironment('REDIS_HOST', redisCluster.attrRedisEndpointAddress);
+    wpContainer?.addEnvironment('REDIS_PORT', redisCluster.attrRedisEndpointPort);
   }
 
 
