@@ -7,7 +7,6 @@ import { StandardWordpressConstruct, WordpressEcsConstruct } from '../lib/Wordpr
 import { BuWordpressEcsConstruct as BuWordpressConstruct } from '../lib/adaptations/WordpressBU';
 import { BuWordpressS3ProxyEcsConstruct as BuS3ProxyConstruct } from '../lib/adaptations/S3ProxyBU';
 import { BuWordpressRdsConstruct as RdsConstruct } from '../lib/Rds';
-import { BuS3ProxyEc2Stack as S3ProxyEc2Stack } from '../lib/temp/ec2';
 import { IVpc, IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { HostedZoneWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
 import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
@@ -93,22 +92,6 @@ switch(context.SCENARIO.toLowerCase()) {
 
   case scenarios.S3PROXY_BU:
     new BuS3ProxyConstruct(new Stack(app, 'S3ProxyStack', stackProps), s3ProxyId);
-    break;
-
-  /**
-   * NOTE: This is a legacy service deployment of s3 proxying for ecs that is NOT based on fargate, but ec2.
-   * It is being kept around for now for reference as it contains solutions to some potentially applicable problems.
-   * Eventually destined for the scrap heap. 
-   */
-  case scenarios.S3PROXY_EC2:
-    new S3ProxyEc2Stack(app, 'S3ProxyEcsStack', {
-      stackName: 's3proxy-ecs-dev',
-      description: "EC2 ECS cluster for s3proxy signing service",
-      env: {
-        account: context.ACCOUNT,
-        region: context.REGION
-      }
-    });
     break;
 }
 

@@ -23,7 +23,6 @@ export enum SCENARIO {
   WORDPRESS_BU = 'wordpress-bu',
   S3PROXY = 's3proxy',
   S3PROXY_BU = 's3proxy-bu',
-  S3PROXY_EC2 = 's3proxy-ec2',
   RDS = 'rds',
   COMPOSITE = 'composite',
   COMPOSITE_BU = 'composite-bu',
