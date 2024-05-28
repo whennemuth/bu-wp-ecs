@@ -43,14 +43,6 @@ export class BuWordpressRdsConstruct extends Construct {
       allowAllOutbound: true,
     });
 
-    if(this._context?.CIDRS?.dbreport1) {
-      this._securityGroup.addIngressRule(Peer.ipv4(this._context.CIDRS.dbreport1), Port.tcp(this._port));
-    }
-    if(this._context?.CIDRS?.dbreport2) {
-      this._securityGroup.addIngressRule(Peer.ipv4(this._context.CIDRS.dbreport2), Port.tcp(this._port));
-    }
-
-
     switch(dbType) {
 
       case WORDPRESS_DB_TYPE.INSTANCE:
@@ -167,19 +159,13 @@ export class BuWordpressRdsConstruct extends Construct {
   }
 
   /**
-   * Get the vpc by checking for it in the properties supplied to the construct, else look it up using the
-   * VPC_ID context value, resorting to creating a new vpc if either return no vpc.
+   * Get the vpc by checking for it in the properties supplied to the construct, else create a new vpc.
    */
   public get vpc(): Vpc {
     if(this._vpc) {
       return this._vpc;
     }
     let { vpc } = this._props || { };
-    if( ! vpc) {
-      if(this._context.VPC_ID) {
-        vpc = Vpc.fromLookup(this, 'BuVpc', { vpcId: this._context.VPC_ID })
-      }
-    }
     if( ! vpc) {
       vpc = new Vpc(this, `${this._id}-vpc`, {
         ipAddresses: IpAddresses.cidr('10.0.0.0/21')

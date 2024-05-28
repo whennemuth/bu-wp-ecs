@@ -20,20 +20,6 @@
     },
     "includeRDS": false
   },
-  "CIDRS": {
-    "campus1": "168.122.81.0/24",
-    "campus2": "168.122.82.0/23",
-    "campus3": "168.122.76.0/24",
-    "campus4": "168.122.68.0/24",
-    "campus5": "168.122.69.0/24",
-    "wp-app-dv02": "168.122.81.0/24",
-    "dbreport1": "168.122.78.128/28",
-    "dbreport2": "168.122.84.240/28"
-  },
-  "SUBNETS": {
-    "campus1": "subnet-06edbf07b7e07d73c",
-    "campus2": "subnet-0032f03a478ee868b"
-  },
   "S3PROXY": {
     "dockerImage": "public.ecr.aws/bostonuniversity-nonprod/aws-sigv4-proxy:latest",
     "bucketUserSecretName": "wordpress-protected-s3-assets-dev-user/AccessKey",

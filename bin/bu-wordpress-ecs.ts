@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 import { App, Stack, StackProps } from 'aws-cdk-lib';
-import * as context from '../contexts/context.json';
+import { IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { IContext, SCENARIO as scenarios } from '../contexts/IContext';
+import * as context from '../contexts/context.json';
+import { checkIamServerCertificate } from '../lib/Certificate';
+import { BuWordpressRdsConstruct as RdsConstruct } from '../lib/Rds';
 import { StandardS3ProxyConstruct } from '../lib/S3Proxy';
 import { StandardWordpressConstruct, WordpressEcsConstruct } from '../lib/Wordpress';
-import { BuWordpressEcsConstruct as BuWordpressConstruct } from '../lib/adaptations/WordpressBU';
-import { BuWordpressRdsConstruct as RdsConstruct } from '../lib/Rds';
-import { IVpc, IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
-import { HostedZoneWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
-import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
-import { checkIamServerCertificate } from '../lib/Certificate';
 import { CloudfrontWordpressEcsConstruct, lookupCloudfrontHeaderChallenge, lookupCloudfrontPrefixListId } from '../lib/adaptations/WordpressBehindCloudfront';
+import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
+import { HostedZoneWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
 
 const app = new App();
 app.node.setContext('stack-parms', context);
@@ -51,16 +50,6 @@ switch(context.SCENARIO.toLowerCase()) {
     ).then(ecs => {
       rds.addSecurityGroupIngressTo(ecs.securityGroup.securityGroupId);
     });    
-    break;
-
-  case scenarios.COMPOSITE_BU:
-    var stack = new Stack(app, 'CompositeStack', stackProps);
-    var iVpc: IVpc = Vpc.fromLookup(stack, 'BuVpc', { vpcId: ctx.VPC_ID })
-    var rds = new RdsConstruct(stack, rdsId, { vpc: iVpc });
-    var buEcs = new BuWordpressConstruct(
-      stack, wpId, { vpc: iVpc, rdsHostName:rds.endpointAddress }
-    );
-    rds.addSecurityGroupIngressTo(buEcs.securityGroup.securityGroupId);
     break;
 
   case scenarios.WORDPRESS:

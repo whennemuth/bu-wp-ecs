@@ -81,6 +81,8 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
     //     },
     //     loadBalancingAlgorithmType: TargetGroupLoadBalancingAlgorithmType.LEAST_OUTSTANDING_REQUESTS,          
     //   })
-    // });    
+    // });   
+    
+    this.setTaskAutoScaling();
   }
 }

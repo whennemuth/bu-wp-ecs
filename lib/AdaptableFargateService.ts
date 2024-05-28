@@ -1,10 +1,10 @@
-import { Construct } from 'constructs';
-import { Stack } from 'aws-cdk-lib';
-import { ContainerDefinitionOptions, FargateTaskDefinition, FargateTaskDefinitionProps } from 'aws-cdk-lib/aws-ecs';
-import { ApplicationLoadBalancedFargateService as albfs } from 'aws-cdk-lib/aws-ecs-patterns';
-import { ApplicationLoadBalancedFargateServiceProps as albfsp } from 'aws-cdk-lib/aws-ecs-patterns';
-import { IContext } from '../contexts/IContext';
+import { Duration, Stack } from 'aws-cdk-lib';
+import { Schedule } from 'aws-cdk-lib/aws-applicationautoscaling';
 import { IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { ContainerDefinitionOptions, FargateTaskDefinitionProps, ScalableTaskCount } from 'aws-cdk-lib/aws-ecs';
+import { ApplicationLoadBalancedFargateService as albfs, ApplicationLoadBalancedFargateServiceProps as albfsp } from 'aws-cdk-lib/aws-ecs-patterns';
+import { Construct } from 'constructs';
+import { IContext } from '../contexts/IContext';
 
 /**
  * Any fargate service will perform two steps.
@@ -52,19 +52,13 @@ export abstract class AdaptableConstruct extends Construct {
   }
   
   /**
-   * Get the vpc by checking for it in the properties supplied to the construct, else look it up using the
-   * VPC_ID context value, resorting to creating a new vpc if either return no vpc.
+   * Get the vpc by checking for it in the properties supplied to the construct, else create new vpc.
    */
   public getVpc = (): Vpc => {
     if(this.vpc) {
       return this.vpc;
     }
     let { vpc } = this.props || { };
-    if( ! vpc) {
-      if(this.context.VPC_ID) {
-        vpc = Vpc.fromLookup(this, 'BuVpc', { vpcId: this.context.VPC_ID })
-      }
-    }
     if( ! vpc) {
       vpc = new Vpc(this, `${this.id}-vpc`, {
         ipAddresses: IpAddresses.cidr('10.0.0.0/21')
@@ -73,6 +67,48 @@ export abstract class AdaptableConstruct extends Construct {
     this.vpc = vpc;
     return vpc;
   }
+
+  public setTaskAutoScaling = (): void => {
+    const stc: ScalableTaskCount = this.fargateService.service.autoScaleTaskCount({
+      // The lower boundary to which service auto scaling can adjust the desired count of the service.
+      minCapacity: 2,
+      // The upper boundary to which service auto scaling can adjust the desired count of the service.
+      maxCapacity: 10
+    });
+
+    // Target Tracking
+    stc.scaleOnCpuUtilization('CpuScaling', {
+      targetUtilizationPercent: 50,
+      scaleInCooldown: Duration.minutes(1),
+      scaleOutCooldown: Duration.minutes(1),      
+    });
+
+    stc.scaleOnMemoryUtilization('MemoryScaling', {
+      targetUtilizationPercent: 50,
+      scaleInCooldown: Duration.minutes(1),
+      scaleOutCooldown: Duration.minutes(1),      
+    });
+
+    /**
+     * Scheduled adjustment to the minimum number of tasks required.
+     * This will effectively neutralize any target tracking scaling that attempts to reduce the task count
+     * down to 1 task by maintaining a lower limit of 2.  
+     */
+    stc.scaleOnSchedule('WorkDayMorningScaleUp', {
+      schedule: Schedule.cron({ hour: '8', minute: '0', weekDay: '1-5' }),
+      minCapacity: 2
+    });
+    /**
+     * Scheduled adjustment to the minimum number of tasks required.
+     * This will effectively enable any target tracking scaling that wants to reduce the task count
+     * down to 1 task.  
+     */
+    stc.scaleOnSchedule('WorkDayEveningScaleDown', {
+      schedule: Schedule.cron({ hour: '20', minute: '0', weekDay: '1-5' }),
+      minCapacity: 1
+    });  
+  }
+
 
   /**
    * Set the tags for the stack

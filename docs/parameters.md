@@ -20,12 +20,6 @@ Depending on the scenario that applies, only a subset of the following parameter
 - PREFIXES: Mid-level string identifier for specific constructs *(wordpress, s3proxy, rds)*
 - ACCOUNT: The number of the aws account being deployed to.
 - REGION: The region being deployed to.
-- VPC_ID: The ID of the existing vpc to deploy into in a CSS account
-- CIDRS: An array identifying each ip address range to be set as ingress rules against the security group applied to the fargate service.
-- CAMPUS_SUBNET1: The first of two "campus" subnets to restrict cluster capacity to in a CSS account
-- CAMPUS_SUBNET2: The second of two "campus" subnets to restrict cluster capacity to in a CSS account
-- CAMPUS_VPN_CIDR(1-5): The  values for 5 common campus vpn ranges.
-- WP_APP_DV02_CIDR: The IP address of wp-app-dv02 as a CIDR.
 - DNS:
   - hostedZone: The name of a preexisting hosted zone for which a new "A" record will created to route traffic to the ALB created for wordpress.
     The "A"
@@ -87,4 +81,3 @@ Depending on the scenario that applies, only a subset of the following parameter
 - [Standard standalone wordpress service](./parameters-wordpress.md) *(database and s3proxy service must pre-exist and whose details must be included)*.
 - [Standard composite service](./parameters-composite.md) *(database is also created along with the s3proxy service as a ["sidecar"](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/fargate-security-considerations.html))*
 - [Standard composit service with mod_shib](./parameters-composite-mod_shib.md) *(same as Standard composite service, but the wordpress container performs the shibboleth client services)*
-- [Adapted composite service](./parameters-composite-bu.md) *(Same as standard composite service, but with adaptations specific to the bu common security services aws account)*

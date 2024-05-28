@@ -107,7 +107,9 @@ export class CloudfrontWordpressEcsConstruct extends WordpressEcsConstruct {
       MessageBody: 'Access denied',
       StatusCode: '403'
     };
-    defaultListener.addPropertyOverride('DefaultActions.0.FixedResponseConfig', fixedResponseConfig)
+    defaultListener.addPropertyOverride('DefaultActions.0.FixedResponseConfig', fixedResponseConfig);
+
+    this.setTaskAutoScaling();
   }
 }
 

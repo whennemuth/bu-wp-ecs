@@ -44,9 +44,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
    * @returns 
    */
   includeSidecar(): boolean {
-    const composite = 
-      this.context.SCENARIO == scenarios.COMPOSITE || 
-      this.context.SCENARIO == scenarios.COMPOSITE_BU;
+    const composite = this.context.SCENARIO == scenarios.COMPOSITE;
     const s3ProxyHost = this.context.WORDPRESS.env.s3ProxyHost ?? 'localhost';
     return composite && s3ProxyHost == 'localhost';
   }
@@ -176,3 +174,4 @@ export class StandardWordpressConstruct extends WordpressEcsConstruct {
   adaptResourceProperties(): void { /* Do nothing */ }
   adaptResources(): void { /* Do nothing */ }
 };
+

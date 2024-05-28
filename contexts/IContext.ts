@@ -9,9 +9,6 @@ export interface IContext {
   PREFIXES:           Prefixes;
   ACCOUNT:            string;
   REGION:             string;
-  VPC_ID:             string;
-  CIDRS?:              Cidrs;
-  SUBNETS?:           Subnets;
   DNS?:               DNS;
   S3PROXY:            S3Proxy;
   WORDPRESS:          Wordpress;
@@ -23,18 +20,6 @@ export enum SCENARIO {
   S3PROXY = 's3proxy',
   RDS = 'rds',
   COMPOSITE = 'composite',
-  COMPOSITE_BU = 'composite-bu',
-}
-
-export interface Cidrs {
-  campus1:       string;
-  campus2:       string;
-  campus3:       string;
-  campus4:       string;
-  campus5:       string;
-  "wp-app-dv02": string;
-  dbreport1:     string;
-  dbreport2:     string;
 }
 
 export interface DNS {
@@ -61,11 +46,6 @@ export interface S3Proxy {
   bucketUserSecretName: string;
   recordName:           string;
   OLAP:                 string;
-}
-
-export interface Subnets {
-  campus1:   string;
-  campus2:   string;
 }
 
 export interface Tags {
