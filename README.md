@@ -23,7 +23,7 @@ TODO: Include architectural explanation and diagram here.
 
 ### Steps
 
-1. Create a `./context/context.json` file. *([`./context/_example-context.json`](./context/_example-context.json) is a useful file to base yours on)*.
+1. Create a `./context/context.json` file.
    This file will contain all parameters that the cdk will use when generating the Cloudformation template it later deploys. Most of these parameters correspond to something one might otherwise use as values being supplied to Cloudformation if it were being invoked directly, but they will appear "hard-coded" in the stack template. [From CDK docs on parameters](https://docs.aws.amazon.com/cdk/v2/guide/parameters.html):
 
    > *In general, we recommend against using AWS CloudFormation parameters with the AWS CDK. The usual ways to pass values into AWS CDK apps are [context values](https://docs.aws.amazon.com/cdk/v2/guide/context.html) and environment variables. Because they are not available at synthesis time, parameter values cannot be easily used for flow control and other purposes in your CDK app.*
