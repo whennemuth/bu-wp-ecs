@@ -69,7 +69,6 @@ export class WordpressAppContainerDefConfig {
         IDP_ENTITY_ID: wp.env.idpEntityId,
         TZ: wp.env.TZ,
         S3PROXY_HOST: wp.env.s3ProxyHost || `http://localhost:${s3ProxyHostPort}`,
-        FORWARDED_FOR_HOST: wp.env.forwardedForHost,
         WORDPRESS_DB_HOST: getRdsHost(),
         WORDPRESS_DB_USER: wp.env.dbUser || 'root',
         WORDPRESS_DB_NAME: wp.env.dbName || 'wp_db',

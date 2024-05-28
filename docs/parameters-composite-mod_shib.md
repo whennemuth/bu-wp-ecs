@@ -28,7 +28,6 @@ The main wordpress container is performing the shibboleth client role and it is 
     "env": {
       "spEntityId": "https://*.kualitest.research.bu.edu/shibboleth",
       "idpEntityId": "https://shib-test.bu.edu/idp/shibboleth",
-      "forwardedForHost": "jaydub-bulb.cms-devl.bu.edu",
       "TZ": "America/New_York",
       "debug": true,
       "dbType": "serverless",

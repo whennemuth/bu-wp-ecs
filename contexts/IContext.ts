@@ -59,7 +59,6 @@ export interface Wordpress {
 export interface WordpressEnv {
   spEntityId?:       string;
   idpEntityId?:      string;
-  forwardedForHost?: string;
   s3ProxyHost?:      string;
   TZ:                string;
   dbType:            WORDPRESS_DB_TYPE;
