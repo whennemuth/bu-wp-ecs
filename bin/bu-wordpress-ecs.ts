@@ -67,10 +67,6 @@ switch(context.SCENARIO.toLowerCase()) {
     new StandardWordpressConstruct(new Stack(app, 'WordpressStack', stackProps), wpId);
     break; 
 
-  case scenarios.WORDPRESS_BU:
-    new BuWordpressConstruct(new Stack(app, 'WordpressStack', stackProps), wpId);
-    break;
-
   case scenarios.RDS:
     var stack = new Stack(app, 'RdsStack', stackProps);
     var vpc: Vpc = new Vpc(stack, `${context.STACK_ID}-vpc`, { 
