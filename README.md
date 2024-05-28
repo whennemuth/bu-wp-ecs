@@ -28,8 +28,7 @@ TODO: Include architectural explanation and diagram here.
 
    > *In general, we recommend against using AWS CloudFormation parameters with the AWS CDK. The usual ways to pass values into AWS CDK apps are [context values](https://docs.aws.amazon.com/cdk/v2/guide/context.html) and environment variables. Because they are not available at synthesis time, parameter values cannot be easily used for flow control and other purposes in your CDK app.*
 
-   Currently, the recognized scenarios for stack creation will come with their own subset of parameters.
-   The following link details each scenario with explanations of the parameters. 
+   The following link details all context values with explanation on how to use them to modify or broaden CDK resource output. 
    
    - [Parameters](./docs/parameters.md)
    

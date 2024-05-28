@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { App, Stack, StackProps } from 'aws-cdk-lib';
 import { IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
-import { IContext, SCENARIO as scenarios } from '../contexts/IContext';
+import { IContext } from '../contexts/IContext';
 import * as context from '../contexts/context.json';
 import { checkIamServerCertificate } from '../lib/Certificate';
 import { BuWordpressRdsConstruct as RdsConstruct } from '../lib/Rds';
@@ -10,80 +10,73 @@ import { CloudfrontWordpressEcsConstruct, lookupCloudfrontHeaderChallenge, looku
 import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
 import { HostedZoneWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
 
-const app = new App();
-app.node.setContext('stack-parms', context);
+const render = async ():Promise<void> => {
+  const app = new App();
+  app.node.setContext('stack-parms', context);
 
-const stackProps: StackProps = {
-  stackName: `${context.STACK_NAME}-${context.TAGS.Landscape}`,
-  description: 'Fargate ECS cluster for wordpress, s3proxy, and rds',
-  env: {
-    account: context.ACCOUNT,
-    region: context.REGION
-  },
-  tags: {
-    Service: context.TAGS.Service,
-    Function: context.TAGS.Function,
-    Landscape: context.TAGS.Landscape
+  // Deconstruct the context
+  const { 
+    ACCOUNT:account, REGION:region, STACK_ID, STACK_NAME, DNS,
+    TAGS: { Service, Function, Landscape }, 
+    PREFIXES: { wordpress:pfxWordpress, rds:pfxRds }
+  } = context as IContext;
+
+  // Define the stack properties
+  const stackProps: StackProps = {
+    stackName: `${STACK_NAME}-${Landscape}`,
+    description: 'Fargate ECS cluster for wordpress, s3proxy, and rds',
+    env: { account, region },
+    tags: { Service, Function, Landscape }
   }
-}
 
-const wpId = `${context.STACK_ID}-${context.PREFIXES.wordpress}`;
-const rdsId = `${context.STACK_ID}-${context.PREFIXES.rds}`;
-
-switch(context.SCENARIO.toLowerCase()) {
-
-  /**
-   * Scenario choices for deployment.
-   */
-  case scenarios.COMPOSITE:
-    var stack = new Stack(app, 'CompositeStack', stackProps);
-    var vpc: Vpc = new Vpc(stack, `${context.STACK_ID}-vpc`, { 
-      ipAddresses: IpAddresses.cidr('10.0.0.0/21'),
-      availabilityZones: [ `${context.REGION}a`, `${context.REGION}b`]
-    }); 
-    var rds = new RdsConstruct(stack, rdsId, { vpc });
-    getStandardCompositeInstance(
-      stack, { vpc, rdsHostName:rds.endpointAddress }
-    ).then(ecs => {
-      rds.addSecurityGroupIngressTo(ecs.securityGroup.securityGroupId);
-    });    
-    break;
-}
-
-/**
-* Static factory for standard wordpress constructs of the composite scenario.
-* @param stack 
-* @param id 
-* @param props 
-* @returns 
-*/
-async function getStandardCompositeInstance(stack: Stack, props?: any): Promise<WordpressEcsConstruct> {
-  const context:IContext = stack.node.getContext('stack-parms');
-  const { hostedZone, certificateARN, cloudfront } = context?.DNS ?? {};
-  const { challengeSecretFld } = cloudfront ?? {};
+  // Define properties
+  const wpId = `${STACK_ID}-${pfxWordpress}`;
+  const rdsId = `${STACK_ID}-${pfxRds}`;
+  const stack = new Stack(app, 'StandardStack', stackProps);
+  const ipAddresses = IpAddresses.cidr('10.0.0.0/21');
+  const availabilityZones = [ `${region}a`, `${region}b`];
+  const vpc: Vpc = new Vpc(stack, `${STACK_ID}-vpc`, { ipAddresses, availabilityZones }); 
   const { WORDPRESS: { secret: { arn:secretArn }}} = context;
+  const { hostedZone, certificateARN, cloudfront } = DNS ?? {};
 
+  // Define the RDS construct
+  const rds = new RdsConstruct(stack, rdsId, { vpc });
+  const { endpointAddress:rdsHostName } = rds;
+
+  // Define the ECS construct
+  let ecs:WordpressEcsConstruct;
   if( ! certificateARN) {
-    return checkIamServerCertificate().then(arn => {
-      Object.assign(props, { iamServerCertArn: arn })
-      return new SelfSignedWordpressEcsConstruct(stack, wpId, props);
-    });    
+    const iamServerCertArn = await checkIamServerCertificate();
+    ecs = new SelfSignedWordpressEcsConstruct(stack, wpId, { vpc, rdsHostName, iamServerCertArn });
+  }
+  else if(cloudfront) {
+    const { challengeSecretFld } = cloudfront;
+    const prefixId = await lookupCloudfrontPrefixListId(region);
+    const challenge = await lookupCloudfrontHeaderChallenge(secretArn, challengeSecretFld);
+    ecs = new CloudfrontWordpressEcsConstruct(stack, wpId, { 
+      vpc, rdsHostName, 'cloudfront-prefix-id':prefixId, 'cloudfront-challenge':challenge,
+    });
+  }
+  else if(hostedZone) {
+    ecs = new HostedZoneWordpressEcsConstruct(stack, wpId, { vpc, rdsHostName });
+  }
+  else {
+    console.log("WARNING: This fargate service will not be publicly addressable. " + 
+      "Some modification after stack creation will be required.");
+    ecs = new StandardWordpressConstruct(stack, wpId, { vpc, rdsHostName });
   }
 
-  if(cloudfront && challengeSecretFld) {
-    props['cloudfront-prefix-id'] = await lookupCloudfrontPrefixListId(context.REGION);
-    props['cloudfront-challenge'] = await lookupCloudfrontHeaderChallenge(secretArn, challengeSecretFld);
-    return new CloudfrontWordpressEcsConstruct(stack, wpId, props);
-  }
-
-  if(hostedZone) {
-    return new HostedZoneWordpressEcsConstruct(stack, wpId, props);
-  }
-
-  console.log("WARNING: This fargate service will not be publicly addressable. " + 
-    "Some modification after stack creation will be required.");
-  return new StandardWordpressConstruct(stack, wpId, props);
+  // Grant wordpress access to the database
+  rds.addSecurityGroupIngressTo(ecs.securityGroup.securityGroupId);
 }
+
+render()
+.then(() => {
+  console.log('Render complete!')
+})
+.catch(e => {
+  JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
+});
 
    
 

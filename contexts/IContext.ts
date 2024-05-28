@@ -3,7 +3,6 @@
  */
 
 export interface IContext {
-  SCENARIO:           SCENARIO;
   STACK_ID:           string;
   STACK_NAME:         string;
   PREFIXES:           Prefixes;
@@ -13,10 +12,6 @@ export interface IContext {
   S3PROXY:            S3Proxy;
   WORDPRESS:          Wordpress;
   TAGS:               Tags;
-}
-
-export enum SCENARIO {
-  COMPOSITE = 'composite',
 }
 
 export interface DNS {
@@ -60,13 +55,13 @@ export interface WordpressEnv {
   spEntityId?:       string;
   idpEntityId?:      string;
   s3ProxyHost?:      string;
-  TZ:                string;
-  dbType:            WORDPRESS_DB_TYPE;
-  dbHost:            string;
-  dbUser:            string;
-  dbName:            string;
-  dbPort:            string;
-  debug:             boolean;
+  TZ?:               string;
+  dbType?:           WORDPRESS_DB_TYPE;
+  dbHost?:           string;
+  dbUser?:           string;
+  dbName?:           string;
+  dbPort?:           string;
+  debug?:            boolean;
 }
 
 export interface WordpressSecret {

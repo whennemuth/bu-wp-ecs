@@ -5,7 +5,6 @@ import { ApplicationLoadBalancedFargateService as albfs, ApplicationLoadBalanced
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import { SCENARIO as scenarios } from '../contexts/IContext';
 import { AdaptableConstruct, FargateService } from './AdaptableFargateService';
 import { ParameterTester } from './Utils';
 import { WordpressAppContainerDefConfig } from './WordpressAppContainerDefConfig';
@@ -40,23 +39,13 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
     this.adaptResources();
   }
 
-  /**
-   * Determine if the context indicates the s3proxy signing service should run as a sidecar container to the wordpress container.
-   * @returns 
-   */
-  includeSidecar(): boolean {
-    const composite = this.context.SCENARIO == scenarios.COMPOSITE;
-    const s3ProxyHost = this.context.WORDPRESS.env.s3ProxyHost ?? 'localhost';
-    return composite && s3ProxyHost == 'localhost';
-  }
-
   setResourceProperties(): void {
 
-    const { id, vpc, context: { TAGS: { Landscape } } } = this;
+    const { id, vpc, context: { TAGS: { Landscape }, WORDPRESS } } = this;
 
     this.containerDefProps = new WordpressAppContainerDefConfig().getProperties(this);
 
-    if(this.includeSidecar()) {
+    if(WORDPRESS.env?.s3ProxyHost == 'localhost') {
       this.sidecarContainerDefProps = new WordpressS3ProxyContainerDefConfig().setPrefix('s3proxy').getProperties(this);
     }
     
@@ -93,7 +82,8 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
   buildResources(): void {
 
-    const { id, fargateServiceProps, containerDefProps, sidecarContainerDefProps: _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
+    const { id, fargateServiceProps, containerDefProps, context: { WORDPRESS },
+       sidecarContainerDefProps: _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
 
     this.setStackTags();
 
@@ -101,7 +91,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
     wordpressTaskDef.addContainer(`${id}-taskdef-wp`, containerDefProps);
 
-    if(this.includeSidecar()) {
+    if(WORDPRESS.env?.s3ProxyHost == 'localhost') {
       wordpressTaskDef.addContainer(`${id}-taskdef-s3proxy`, _sidecarContainerDefProps);
     }
 

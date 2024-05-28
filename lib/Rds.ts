@@ -16,12 +16,14 @@ export class BuWordpressRdsConstruct extends Construct {
   private props: any;
   private id: string;
 
+  public static DEFAULT_DB_TYPE:WORDPRESS_DB_TYPE = WORDPRESS_DB_TYPE.SERVERLESS;
+  public static DEFAULT_PORT:string = '3306';
+
   constructor(scope: Construct, id: string, props?: any) {
 
     super(scope, id);
 
     this.context = scope.node.getContext('stack-parms');
-    this.port = Number.parseInt(this.context.WORDPRESS.env?.dbPort ?? '3306');
     this.props = props;
     this.id = id;
 
@@ -29,16 +31,19 @@ export class BuWordpressRdsConstruct extends Construct {
   }
 
   private build = () => {
-    const { id, context, context: { TAGS } } = this;
-    const dbType = context.WORDPRESS.env.dbType ?? WORDPRESS_DB_TYPE.SERVERLESS;
-    const hostedZone = context?.DNS?.hostedZone;
-    const addRecordToHostedZone = context?.DNS?.includeRDS;
+    const { id, context, context: { TAGS, DNS, WORDPRESS: { env } } } = this;
+    const { DEFAULT_DB_TYPE, DEFAULT_PORT } = BuWordpressRdsConstruct;
+    const dbType = env.dbType ?? DEFAULT_DB_TYPE;
+    const hostedZone = DNS?.hostedZone;
+    const addRecordToHostedZone = DNS?.includeRDS;
     const { vpc } = this.props;
 
     const credentials: Credentials = Credentials.fromSecret(
       Secret.fromSecretCompleteArn(this, `${id}-secret`, context.WORDPRESS.secret.arn),
-      context.WORDPRESS.env.dbUser
+      env.dbUser
     );
+
+    this.port = Number.parseInt(env?.dbPort ?? DEFAULT_PORT);
 
     this.securityGroup = new SecurityGroup(this, `${id}-mysql-sg`, {
       vpc, 
@@ -58,7 +63,7 @@ export class BuWordpressRdsConstruct extends Construct {
           }),
           // enablePerformanceInsights: true,
           copyTagsToSnapshot: true,
-          databaseName: context.WORDPRESS.env.dbName,
+          databaseName: env.dbName,
           credentials,
           instanceType: InstanceType.of( InstanceClass.T3, InstanceSize.SMALL ),
           securityGroups: [ this.securityGroup ],
@@ -91,7 +96,7 @@ export class BuWordpressRdsConstruct extends Construct {
           serverlessV2MinCapacity: AuroraCapacityUnit.ACU_1,
           serverlessV2MaxCapacity: AuroraCapacityUnit.ACU_8,
           copyTagsToSnapshot: true,
-          defaultDatabaseName: context.WORDPRESS.env.dbName,
+          defaultDatabaseName: env.dbName,
           credentials,
           securityGroups: [ this.securityGroup ],
           removalPolicy: RemovalPolicy.DESTROY,
@@ -110,7 +115,7 @@ export class BuWordpressRdsConstruct extends Construct {
             version: AuroraMysqlEngineVersion.VER_3_04_0,
           }),
           copyTagsToSnapshot: true,
-          defaultDatabaseName: context.WORDPRESS.env.dbName,
+          defaultDatabaseName: env.dbName,
           backupRetention: Duration.days(7),
           credentials,
           securityGroups: [ this.securityGroup ],
