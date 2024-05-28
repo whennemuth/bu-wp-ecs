@@ -24,7 +24,7 @@ export class CloudfrontWordpressEcsConstruct extends WordpressEcsConstruct {
 
   adaptResourceProperties(): void {
 
-    const {  id, props, context: { STACK_ID, DNS, TAGS: { Landscape }}, getVpc } = this;
+    const {  id, vpc, props, context: { STACK_ID, DNS, TAGS: { Landscape } } } = this;
 
     // 1) Unpack the DNS.
     const { hostedZone, subdomain, certificateARN, cloudfront } = DNS || {};
@@ -35,7 +35,7 @@ export class CloudfrontWordpressEcsConstruct extends WordpressEcsConstruct {
     // 2) Create the one security group for the ALB, which should only allow inbound requests from cloudfront
     const { SSL_HOST_PORT:httpsPort } = WordpressAppContainerDefConfig;
     const securityGroup = new SecurityGroup(this, `${id}-alb-sg`, {
-      vpc: getVpc(), 
+      vpc, 
       allowAllOutbound: true, 
       description: `Allow ingress from cloudfront on port ${httpsPort}`,
     });
@@ -47,7 +47,7 @@ export class CloudfrontWordpressEcsConstruct extends WordpressEcsConstruct {
     // However, you can still lock down ingress to cloudfront only via the security group.
     // Also, consider: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/restrict-access-to-load-balancer.html
     const alb = new ApplicationLoadBalancer(this, `${id}-alb`, {
-      vpc: getVpc(), 
+      vpc, 
       internetFacing: true,
       loadBalancerName: `${id}-alb-${Landscape}`,      
       securityGroup

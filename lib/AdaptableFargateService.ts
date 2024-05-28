@@ -1,6 +1,6 @@
 import { Duration, Stack } from 'aws-cdk-lib';
 import { Schedule } from 'aws-cdk-lib/aws-applicationautoscaling';
-import { IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { Vpc } from 'aws-cdk-lib/aws-ec2';
 import { ContainerDefinitionOptions, FargateTaskDefinitionProps, ScalableTaskCount } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService as albfs, ApplicationLoadBalancedFargateServiceProps as albfsp } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Construct } from 'constructs';
@@ -49,23 +49,6 @@ export abstract class AdaptableConstruct extends Construct {
    */
   useSSL(): boolean {
     return this.context?.DNS?.certificateARN ? true : false;
-  }
-  
-  /**
-   * Get the vpc by checking for it in the properties supplied to the construct, else create new vpc.
-   */
-  public getVpc = (): Vpc => {
-    if(this.vpc) {
-      return this.vpc;
-    }
-    let { vpc } = this.props || { };
-    if( ! vpc) {
-      vpc = new Vpc(this, `${this.id}-vpc`, {
-        ipAddresses: IpAddresses.cidr('10.0.0.0/21')
-      });
-    }
-    this.vpc = vpc;
-    return vpc;
   }
 
   public setTaskAutoScaling = (): void => {

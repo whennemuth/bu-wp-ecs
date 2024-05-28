@@ -16,7 +16,6 @@ export interface IContext {
 }
 
 export enum SCENARIO {
-  RDS = 'rds',
   COMPOSITE = 'composite',
 }
 

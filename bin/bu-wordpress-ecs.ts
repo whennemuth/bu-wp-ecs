@@ -48,15 +48,6 @@ switch(context.SCENARIO.toLowerCase()) {
       rds.addSecurityGroupIngressTo(ecs.securityGroup.securityGroupId);
     });    
     break;
-
-  case scenarios.RDS:
-    var stack = new Stack(app, 'RdsStack', stackProps);
-    var vpc: Vpc = new Vpc(stack, `${context.STACK_ID}-vpc`, { 
-      ipAddresses: IpAddresses.cidr('10.0.0.0/21'),
-      availabilityZones: [ `${context.REGION}a`, `${context.REGION}b`]
-    }); 
-    new RdsConstruct(stack, rdsId, { vpc });
-    break;
 }
 
 /**

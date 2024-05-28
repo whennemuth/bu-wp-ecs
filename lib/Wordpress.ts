@@ -17,7 +17,7 @@ import { WordpressS3ProxyContainerDefConfig } from './WordpressS3ProxyContainerD
  */
 export abstract class WordpressEcsConstruct extends AdaptableConstruct implements FargateService {
 
-  private _sidecarContainerDefProps: ContainerDefinitionOptions;
+  private sidecarContainerDefProps: ContainerDefinitionOptions;
   private _securityGroup: SecurityGroup;
   
   constructor(scope: Construct, id: string, props?: any) {    
@@ -29,6 +29,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
     this.id = id;
     this.props = props;
     this.healthcheck = '/healthcheck.htm';
+    this.vpc = props.vpc;
 
     this.setResourceProperties();
 
@@ -51,18 +52,18 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
   setResourceProperties(): void {
 
-    const { id, context: { TAGS: { Landscape }}, getVpc } = this;
+    const { id, vpc, context: { TAGS: { Landscape } } } = this;
 
     this.containerDefProps = new WordpressAppContainerDefConfig().getProperties(this);
 
     if(this.includeSidecar()) {
-      this._sidecarContainerDefProps = new WordpressS3ProxyContainerDefConfig().setPrefix('s3proxy').getProperties(this);
+      this.sidecarContainerDefProps = new WordpressS3ProxyContainerDefConfig().setPrefix('s3proxy').getProperties(this);
     }
     
     this.taskDefProps = { family: id, cpu: 1024, memoryLimitMiB: 2048, };
 
     this._securityGroup = new SecurityGroup(this, `${id}-fargate-sg`, {
-      vpc: getVpc(), 
+      vpc, 
       securityGroupName: `wp-fargate-${Landscape}-sg`,
       description: 'Allows for ingress to the wordpress rds db from ecs tasks and selected vpn subnets.',
       allowAllOutbound: true,
@@ -73,7 +74,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       cluster: new Cluster(this, `${id}-cluster`, {
         clusterName: `${id}-cluster-${Landscape}`,
         containerInsights: true,
-        vpc: getVpc()
+        vpc
       }),
       enableExecuteCommand: true,
       loadBalancerName: `${id}-fargate-alb`,
@@ -92,7 +93,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
   buildResources(): void {
 
-    const { id, fargateServiceProps, containerDefProps, _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
+    const { id, fargateServiceProps, containerDefProps, sidecarContainerDefProps: _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
 
     this.setStackTags();
 
