@@ -5,7 +5,6 @@ import { IContext, SCENARIO as scenarios } from '../contexts/IContext';
 import * as context from '../contexts/context.json';
 import { checkIamServerCertificate } from '../lib/Certificate';
 import { BuWordpressRdsConstruct as RdsConstruct } from '../lib/Rds';
-import { StandardS3ProxyConstruct } from '../lib/S3Proxy';
 import { StandardWordpressConstruct, WordpressEcsConstruct } from '../lib/Wordpress';
 import { CloudfrontWordpressEcsConstruct, lookupCloudfrontHeaderChallenge, lookupCloudfrontPrefixListId } from '../lib/adaptations/WordpressBehindCloudfront';
 import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
@@ -13,7 +12,6 @@ import { HostedZoneWordpressEcsConstruct } from '../lib/adaptations/WordpressWit
 
 const app = new App();
 app.node.setContext('stack-parms', context);
-const ctx = app.node.getContext('stack-parms');
 
 const stackProps: StackProps = {
   stackName: `${context.STACK_NAME}-${context.TAGS.Landscape}`,
@@ -31,7 +29,6 @@ const stackProps: StackProps = {
 
 const wpId = `${context.STACK_ID}-${context.PREFIXES.wordpress}`;
 const rdsId = `${context.STACK_ID}-${context.PREFIXES.rds}`;
-const s3ProxyId = `${context.STACK_ID}-${context.PREFIXES.s3proxy}`;
 
 switch(context.SCENARIO.toLowerCase()) {
 
@@ -51,10 +48,6 @@ switch(context.SCENARIO.toLowerCase()) {
       rds.addSecurityGroupIngressTo(ecs.securityGroup.securityGroupId);
     });    
     break;
-
-  case scenarios.WORDPRESS:
-    new StandardWordpressConstruct(new Stack(app, 'WordpressStack', stackProps), wpId);
-    break; 
 
   case scenarios.RDS:
     var stack = new Stack(app, 'RdsStack', stackProps);
