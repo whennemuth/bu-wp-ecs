@@ -76,12 +76,3 @@ export abstract class WordpressS3ProxyEcsConstruct extends AdaptableConstruct im
     }));
   }
 }
-
-/**
- * "Clean sheet of paper" baseline that models aws recommended best practices.
- * Provides a "standard" deployment of this construct as one would conduct in an unconstrained aws account, accepting most defaults.
- */
-export class StandardS3ProxyConstruct extends WordpressS3ProxyEcsConstruct { 
-  adaptResourceProperties(): void { /* Do nothing */ } 
-  adaptResources(): void { /* Do nothing */ }
-};

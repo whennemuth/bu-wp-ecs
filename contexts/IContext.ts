@@ -17,7 +17,6 @@ export interface IContext {
 
 export enum SCENARIO {
   WORDPRESS = 'wordpress',
-  S3PROXY = 's3proxy',
   RDS = 'rds',
   COMPOSITE = 'composite',
 }

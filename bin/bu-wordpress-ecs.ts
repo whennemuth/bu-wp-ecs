@@ -64,15 +64,6 @@ switch(context.SCENARIO.toLowerCase()) {
     }); 
     new RdsConstruct(stack, rdsId, { vpc });
     break;
-
-  /**
-   * NOTE: The s3 proxy is intended for bundling with the wordpress taskdef. 
-   * A standalone implementation is provided here for ease of troublshooting issues with the proxying service, 
-   * which may be difficult to do when it is in the form of a sidecar container within the taskdef of another service.
-   */
-  case scenarios.S3PROXY: 
-    new StandardS3ProxyConstruct(new Stack(app, 'S3ProxyStack', stackProps), s3ProxyId);
-    break;
 }
 
 /**
