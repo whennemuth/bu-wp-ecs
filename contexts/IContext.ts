@@ -41,7 +41,6 @@ export interface Prefixes {
 export interface S3Proxy {
   dockerImage:          string;
   bucketUserSecretName: string;
-  recordName:           string;
   OLAP:                 string;
 }
 
