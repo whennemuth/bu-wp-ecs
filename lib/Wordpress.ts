@@ -44,7 +44,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
     this.containerDefProps = new WordpressAppContainerDefConfig().getProperties(this);
 
-    if(WORDPRESS.env?.s3ProxyHost == 'localhost') {
+    if(this.context.S3PROXY) {
       this.sidecarContainerDefProps = new WordpressS3ProxyContainerDefConfig().setPrefix('s3proxy').getProperties(this);
     }
     
@@ -90,7 +90,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
     wordpressTaskDef.addContainer(`${id}-taskdef-wp`, containerDefProps);
 
-    if(WORDPRESS.env?.s3ProxyHost == 'localhost') {
+    if(this.context.S3PROXY) {
       wordpressTaskDef.addContainer(`${id}-taskdef-s3proxy`, _sidecarContainerDefProps);
     }
 
