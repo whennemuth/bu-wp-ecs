@@ -20,8 +20,9 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
    * Create the alb as public facing
    */
   adaptResourceProperties(): void {
+    const { vpc } = this;
     const alb = new ApplicationLoadBalancer(this, `${this.id}-alb`, {
-      vpc: this.getVpc(), 
+      vpc, 
       internetFacing: true,
       loadBalancerName: `${this.id}-alb-${this.context.TAGS.Landscape}`
     }); 
@@ -81,6 +82,6 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
     //     },
     //     loadBalancingAlgorithmType: TargetGroupLoadBalancingAlgorithmType.LEAST_OUTSTANDING_REQUESTS,          
     //   })
-    // });    
+    // });   
   }
 }

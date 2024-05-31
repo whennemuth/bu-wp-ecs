@@ -13,10 +13,7 @@
       "args": [
         "${workspaceFolder}/bin/bu-wordpress-ecs.ts"
       ], 
-      "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "AWS_PROFILE": "bu"
-      }   
+      "envFile": "${workspaceFolder}/.env"
     },
     {
       "type": "node",
@@ -32,10 +29,7 @@
         "${workspaceFolder}/lib/CertificateTestHarness.ts",
         "delete"
       ], 
-      "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "AWS_PROFILE": "bu"
-      }   
+      "envFile": "${workspaceFolder}/.env"
     }
   ]
 }

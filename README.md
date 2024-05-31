@@ -23,13 +23,12 @@ TODO: Include architectural explanation and diagram here.
 
 ### Steps
 
-1. Create a `./context/context.json` file. *([`./context/_example-context.json`](./context/_example-context.json) is a useful file to base yours on)*.
+1. Create a `./context/context.json` file.
    This file will contain all parameters that the cdk will use when generating the Cloudformation template it later deploys. Most of these parameters correspond to something one might otherwise use as values being supplied to Cloudformation if it were being invoked directly, but they will appear "hard-coded" in the stack template. [From CDK docs on parameters](https://docs.aws.amazon.com/cdk/v2/guide/parameters.html):
 
    > *In general, we recommend against using AWS CloudFormation parameters with the AWS CDK. The usual ways to pass values into AWS CDK apps are [context values](https://docs.aws.amazon.com/cdk/v2/guide/context.html) and environment variables. Because they are not available at synthesis time, parameter values cannot be easily used for flow control and other purposes in your CDK app.*
 
-   Currently, the recognized scenarios for stack creation will come with their own subset of parameters.
-   The following link details each scenario with explanations of the parameters. 
+   The following link details all context values with explanation on how to use them to modify or broaden CDK resource output. 
    
    - [Parameters](./docs/parameters.md)
    
@@ -96,8 +95,8 @@ TODO: Include architectural explanation and diagram here.
 **Shibboleth SP:**
 In a BU wordpress fargate stack, the shibboleth SP can reside in one of two places:
 
-1. Mod_shib: The traditional setup in which wordpress containers running apache would have mod_shib installed, and authentication with shibboleth would be carried out from within.
-2. A newer option is available to build the Fargate cluster such that the Wordpress containers running in it no longer involve themselves with being saml SP clients to shibboleth using the mod_shib module. A DNS option has been added to context parameters to opt for this situation be serviced by a pre-existing Cloudfront distribution that takes over this saml client role. Currently, this Cloudfront distribution is created in a separate CDK stack and it should be  configured to target the ALB of this stack, once it becomes available, as an origin. A lambda@edge origin request function within this separate stack processes all incoming requests and carries out the saml negotiations with the BU shibboleth IDP. This has a few implications:
+1. Mod_shib: The traditional setup in which wordpress containers running apache would have mod_shib installed, and authentication with shibboleth would be carried out from within. ***NOTE**: Omit the DNS.cloudfront item from the context parameters to engage this setup*.
+2. A newer option is available to build the Fargate cluster such that the Wordpress containers running in it no longer involve themselves with being saml SP clients to shibboleth using the mod_shib module. A "Cloudfront" option has been added to the "DNS" item of the context parameters to opt for this situation be serviced by a pre-existing Cloudfront distribution that takes over this saml client role *(**NOTE:** You must include the DNS.cloudfront item in the context parameters to engage this setup)*. Currently, this Cloudfront distribution is created in a separate CDK stack and it should be  configured to target the ALB of this stack, once it becomes available, as an origin. A lambda@edge origin request function within this separate stack processes all incoming requests and carries out the saml negotiations with the BU shibboleth IDP. This has a few implications:
    1. Certificates.
       Cloudfront is a global resource and so will always address an ALB origin over the internet. This means that the ALB must be internet facing and will need to take traffic encrypted with the same certificate that is used for the domain of the Cloudfront distribution. For example, if a the Cloudfront distribution is reachable on https://dev.mydomain.com, then the corresponding certificate - probably with CN *.mydomain.com - will reside in ACM in the same account as the Cloudfront distribution and will need to be requested again from the domain registrar into ACM for the account and region of the ALB. If this certificate is not applied to the ALB, the Cloudfront distribution responds with a 502 error.
    2. Security.

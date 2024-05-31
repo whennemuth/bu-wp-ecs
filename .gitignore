@@ -12,3 +12,6 @@ contexts/context.json
 
 # Ignore vscode workspace files (assumes files end in "workspace")
 *workspace
+
+# Ignore the .env file
+.env
