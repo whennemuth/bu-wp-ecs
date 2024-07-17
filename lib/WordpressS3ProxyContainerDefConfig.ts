@@ -17,7 +17,7 @@ export class WordpressS3ProxyContainerDefConfig {
       scope, 'bucket-secret',  scope.context.S3PROXY.bucketUserSecretName
     );
     
-    const host=`${scope.context.S3PROXY.OLAP}-${scope.context.ACCOUNT}.${olap_service}.${scope.context.REGION}.amazonaws.com`;
+    const host=`${scope.context.S3PROXY.OLAP}.${olap_service}.${scope.context.REGION}.amazonaws.com`;
     const prfx = this.prefix || scope.id;
     const { HOST_PORT:hostPort, HOST_PORT:containerPort } = WordpressS3ProxyContainerDefConfig;
 
