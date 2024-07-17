@@ -1,9 +1,9 @@
-import * as ecs from 'aws-cdk-lib/aws-ecs';
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
-import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { AdaptableConstruct } from './AdaptableFargateService';
+import * as ecs from 'aws-cdk-lib/aws-ecs';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { IContext } from '../contexts/IContext';
+import { AdaptableConstruct } from './AdaptableFargateService';
 import { WordpressS3ProxyContainerDefConfig } from './WordpressS3ProxyContainerDefConfig';
 
 export class WordpressAppContainerDefConfig {
@@ -11,21 +11,25 @@ export class WordpressAppContainerDefConfig {
   public static HOST_PORT: number = 80;
   public static SSL_HOST_PORT: number = 443;
 
+  public static DEFAULT_DB_USER:string = 'root';
+  public static DEFAULT_DB_NAME:string = 'wp_db';
+  public static DEFAULT_DB_HOST:string = 'db';
+
   public getProperties(scope: AdaptableConstruct) : ecs.ContainerDefinitionOptions {
 
-    const { context } = scope;
+    const { context, props } = scope;
     const { WORDPRESS:wp } = context as IContext;
-    const { HOST_PORT:hostPort, SSL_HOST_PORT:sslHostPort } = WordpressAppContainerDefConfig;
+    const { HOST_PORT:hostPort, SSL_HOST_PORT:sslHostPort, DEFAULT_DB_HOST, DEFAULT_DB_NAME, DEFAULT_DB_USER } = WordpressAppContainerDefConfig;
     const { HOST_PORT:s3ProxyHostPort } = WordpressS3ProxyContainerDefConfig;
 
     const getRdsHost = () => {
-      if(scope?.props?.rdsHostName) {
-        return scope?.props?.rdsHostName;
+      if(props?.rdsHostName) {
+        return props?.rdsHostName;
       }
       if(wp.env?.dbHost) {
         return wp.env?.dbHost;
       }
-      return 'db';
+      return DEFAULT_DB_HOST;
     }
 
     // The container will ALWAYS be able to "talk" on port 80
@@ -45,6 +49,25 @@ export class WordpressAppContainerDefConfig {
         protocol: ecs.Protocol.TCP
       } as ecs.PortMapping)
     }
+
+    // Define the container environment variables
+    const { 
+      TZ='America/New_York', 
+      spEntityId:SP_ENTITY_ID='', 
+      idpEntityId:IDP_ENTITY_ID='', 
+      s3ProxyHost:S3PROXY_HOST=`http://localhost:${s3ProxyHostPort}`, 
+      dbUser:WORDPRESS_DB_USER=DEFAULT_DB_USER,
+      dbName:WORDPRESS_DB_NAME=DEFAULT_DB_NAME, 
+      dbHost:WORDPRESS_DB_HOST=getRdsHost(),
+      debug=false,
+    } = wp.env;
+    const WORDPRESS_DEBUG = `${debug}`;
+    const WP_CLI_ALLOW_ROOT = 'true';
+
+    // Define the contaier secrets
+    const {
+      arn:secretArn, fields: { configExtra, dbPassword, spCert, spKey }
+    } = wp.secret;
     
     return {
       image: ecs.ContainerImage.fromRegistry(wp.dockerImage),
@@ -64,49 +87,21 @@ export class WordpressAppContainerDefConfig {
         }),
         streamPrefix: scope.id,
       }),
-      environment: {
-        SP_ENTITY_ID: wp.env.spEntityId,
-        IDP_ENTITY_ID: wp.env.idpEntityId,
-        TZ: wp.env.TZ,
-        S3PROXY_HOST: wp.env.s3ProxyHost || `http://localhost:${s3ProxyHostPort}`,
-        FORWARDED_FOR_HOST: wp.env.forwardedForHost,
-        WORDPRESS_DB_HOST: getRdsHost(),
-        WORDPRESS_DB_USER: wp.env.dbUser || 'root',
-        WORDPRESS_DB_NAME: wp.env.dbName || 'wp_db',
-        WORDPRESS_DEBUG: `${wp.env.debug}`,
-        WP_CLI_ALLOW_ROOT: 'true'
+      environment: { 
+        SP_ENTITY_ID, IDP_ENTITY_ID, TZ, S3PROXY_HOST, WORDPRESS_DB_HOST,
+        WORDPRESS_DB_USER, WORDPRESS_DB_NAME, WORDPRESS_DEBUG, WP_CLI_ALLOW_ROOT
       },
       // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html
       secrets: {
         WORDPRESS_CONFIG_EXTRA: ecs.Secret.fromSecretsManager(
-          Secret.fromSecretCompleteArn(
-            scope, 
-            wp.secret.fields.configExtra, 
-            wp.secret.arn),
-          wp.secret.fields.configExtra,   
-        ),
+          Secret.fromSecretCompleteArn(scope, configExtra, secretArn), configExtra),
         WORDPRESS_DB_PASSWORD: ecs.Secret.fromSecretsManager(
-          Secret.fromSecretCompleteArn(
-            scope, 
-            wp.secret.fields.dbPassword, 
-            wp.secret.arn),
-          wp.secret.fields.dbPassword,  
-        ),
+          Secret.fromSecretCompleteArn(scope, dbPassword, secretArn), dbPassword),
         SHIB_SP_KEY: ecs.Secret.fromSecretsManager(
-          Secret.fromSecretCompleteArn(
-            scope, 
-            wp.secret.fields.spKey, 
-            wp.secret.arn),
-          wp.secret.fields.spKey,  
-        ),
+          Secret.fromSecretCompleteArn(scope, spKey, secretArn), spKey),
         SHIB_SP_CERT: ecs.Secret.fromSecretsManager(
-          Secret.fromSecretCompleteArn(
-            scope, 
-            wp.secret.fields.spCert, 
-            wp.secret.arn),
-          wp.secret.fields.spCert,  
-        ),        
+          Secret.fromSecretCompleteArn(scope, spCert, secretArn), spCert),        
       }
-    }
+    } as ecs.ContainerDefinitionOptions
   }
 }

@@ -5,7 +5,6 @@ import { ApplicationLoadBalancedFargateService as albfs, ApplicationLoadBalanced
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import { SCENARIO as scenarios } from '../contexts/IContext';
 import { AdaptableConstruct, FargateService } from './AdaptableFargateService';
 import { ParameterTester } from './Utils';
 import { WordpressAppContainerDefConfig } from './WordpressAppContainerDefConfig';
@@ -17,8 +16,7 @@ import { WordpressS3ProxyContainerDefConfig } from './WordpressS3ProxyContainerD
  */
 export abstract class WordpressEcsConstruct extends AdaptableConstruct implements FargateService {
 
-  private _sidecarContainerDefProps: ContainerDefinitionOptions;
-  private _securityGroup: SecurityGroup;
+  private sidecarContainerDefProps: ContainerDefinitionOptions;
   
   constructor(scope: Construct, id: string, props?: any) {    
 
@@ -29,6 +27,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
     this.id = id;
     this.props = props;
     this.healthcheck = '/healthcheck.htm';
+    this.vpc = props.vpc;
 
     this.setResourceProperties();
 
@@ -39,32 +38,20 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
     this.adaptResources();
   }
 
-  /**
-   * Determine if the context indicates the s3proxy signing service should run as a sidecar container to the wordpress container.
-   * @returns 
-   */
-  includeSidecar(): boolean {
-    const composite = 
-      this.context.SCENARIO == scenarios.COMPOSITE || 
-      this.context.SCENARIO == scenarios.COMPOSITE_BU;
-    const s3ProxyHost = this.context.WORDPRESS.env.s3ProxyHost ?? 'localhost';
-    return composite && s3ProxyHost == 'localhost';
-  }
-
   setResourceProperties(): void {
 
-    const { id, context: { TAGS: { Landscape }}, getVpc } = this;
+    const { id, vpc, context: { TAGS: { Landscape }, WORDPRESS } } = this;
 
     this.containerDefProps = new WordpressAppContainerDefConfig().getProperties(this);
 
-    if(this.includeSidecar()) {
-      this._sidecarContainerDefProps = new WordpressS3ProxyContainerDefConfig().setPrefix('s3proxy').getProperties(this);
+    if(this.context.S3PROXY) {
+      this.sidecarContainerDefProps = new WordpressS3ProxyContainerDefConfig().setPrefix('s3proxy').getProperties(this);
     }
     
     this.taskDefProps = { family: id, cpu: 1024, memoryLimitMiB: 2048, };
 
     this._securityGroup = new SecurityGroup(this, `${id}-fargate-sg`, {
-      vpc: getVpc(), 
+      vpc, 
       securityGroupName: `wp-fargate-${Landscape}-sg`,
       description: 'Allows for ingress to the wordpress rds db from ecs tasks and selected vpn subnets.',
       allowAllOutbound: true,
@@ -75,7 +62,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       cluster: new Cluster(this, `${id}-cluster`, {
         clusterName: `${id}-cluster-${Landscape}`,
         containerInsights: true,
-        vpc: getVpc()
+        vpc
       }),
       enableExecuteCommand: true,
       loadBalancerName: `${id}-fargate-alb`,
@@ -94,7 +81,8 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
   buildResources(): void {
 
-    const { id, fargateServiceProps, containerDefProps, _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
+    const { id, fargateServiceProps, containerDefProps, context: { WORDPRESS }, setTaskAutoScaling,
+       setRedisCaching, sidecarContainerDefProps: _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
 
     this.setStackTags();
 
@@ -102,7 +90,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
     wordpressTaskDef.addContainer(`${id}-taskdef-wp`, containerDefProps);
 
-    if(this.includeSidecar()) {
+    if(this.context.S3PROXY) {
       wordpressTaskDef.addContainer(`${id}-taskdef-s3proxy`, _sidecarContainerDefProps);
     }
 
@@ -159,6 +147,10 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       wordpressTaskDef.findContainer('wordpress')?.addEnvironment('HTTP_HOST', loadBalancer.loadBalancerDnsName);
       wordpressTaskDef.findContainer('wordpress')?.addEnvironment('SERVER_NAME', loadBalancer.loadBalancerDnsName);
     }
+
+    setTaskAutoScaling();
+
+    setRedisCaching(wordpressTaskDef);
   }
 
   public get securityGroup(): SecurityGroup {
@@ -176,3 +168,4 @@ export class StandardWordpressConstruct extends WordpressEcsConstruct {
   adaptResourceProperties(): void { /* Do nothing */ }
   adaptResources(): void { /* Do nothing */ }
 };
+

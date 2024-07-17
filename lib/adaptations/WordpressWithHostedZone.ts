@@ -36,7 +36,5 @@ export class HostedZoneWordpressEcsConstruct extends WordpressEcsConstruct {
      });
   }
 
-  adaptResources(): void {
-    /** No resources to adapt */
-  }
+  adaptResources(): void { /** Do nothing */ }
 }
