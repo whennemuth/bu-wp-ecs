@@ -44,6 +44,7 @@ export interface S3Proxy {
   dockerImage:          string;
   bucketUserSecretName: string;
   OLAP:                 string;
+  region:               string;
 }
 
 export interface Tags {
