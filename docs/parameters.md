@@ -20,8 +20,7 @@ Conflicting or mutually exclusive parameter combinations will be caught by valid
 
 ### Available Parameters
 
-- STACK_ID: Top-level string identifier for the stack that will go into the naming of most created resources.
-- STACK_NAME: The name of the stack will be shown in the cloudformation management console.
+- STACK_ID: Top-level string identifier for the stack that will go into the naming of the stack and most created resources.
 - STACK_DESCRIPTION: The description of the stack as will be shown in the cloudformation management console.
 - PREFIXES: Mid-level string identifier for specific constructs *(wordpress, s3proxy, rds)*
 - ACCOUNT: The number of the aws account being deployed to.

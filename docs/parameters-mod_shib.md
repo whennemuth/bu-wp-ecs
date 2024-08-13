@@ -8,7 +8,6 @@ The main wordpress container is performing the shibboleth client role and it is 
 ```
 {
   "STACK_ID": "wp",
-  "STACK_NAME": "wp-stack",
   "STACK_DESCRIPTION": "The standard Boston University Wordpress service",
   "PREFIXES": {
     "wordpress": "app",

@@ -8,7 +8,6 @@ NOTE: mod_shib has been removed from the underlying docker image and replaced wi
 ```
 {
   "STACK_ID": "wp",
-  "STACK_NAME": "wp-stack",
   "STACK_DESCRIPTION": "The standard Boston University Wordpress service",
   "PREFIXES": {
     "wordpress": "app",

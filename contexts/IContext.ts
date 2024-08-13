@@ -4,7 +4,6 @@
 
 export interface IContext {
   STACK_ID:           string;
-  STACK_NAME:         string;
   PREFIXES:           Prefixes;
   ACCOUNT:            string;
   REGION:             string;
