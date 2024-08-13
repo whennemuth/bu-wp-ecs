@@ -107,7 +107,7 @@ export abstract class AdaptableConstruct extends Construct {
    * @returns 
    */
   public setRedisCaching = (wordpressTaskDef:FargateTaskDefinition): void => {
-    const { vpc, context: { REDIS } } = this;
+    const { vpc, context: { REDIS, TAGS: { Landscape } } } = this;
     if( ! REDIS ) return;
 
     const { cacheNodeType='cache.t3.micro', numCacheNodes=1 } = REDIS; // Set defaults
@@ -118,7 +118,7 @@ export abstract class AdaptableConstruct extends Construct {
     const redisSubnetGroup = new CfnSubnetGroup(this, `${this.id}-redis-subnet-group`, {
       description: 'Subnet group for the redis cluster.',
       subnetIds: vpc.privateSubnets.map( subnet => subnet.subnetId ),
-      cacheSubnetGroupName: `${this.id}-redis-subnet-group-name`,
+      cacheSubnetGroupName: `${this.id}-${Landscape}-redis-sg`,
     });
 
     // Setup properties for the redis cluster.
