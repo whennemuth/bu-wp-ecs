@@ -52,7 +52,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
     this._securityGroup = new SecurityGroup(this, `${id}-fargate-sg`, {
       vpc, 
-      securityGroupName: `wp-fargate-${Landscape}-sg`,
+      securityGroupName: `${stackId}-fargate-${Landscape}-sg`,
       description: 'Allows for ingress to the wordpress rds db from ecs tasks and selected vpn subnets.',
       allowAllOutbound: true,
     });  
