@@ -59,7 +59,7 @@ export class WordpressAppContainerDefConfig {
       dbUser:WORDPRESS_DB_USER=DEFAULT_DB_USER,
       dbName:WORDPRESS_DB_NAME=DEFAULT_DB_NAME, 
       dbHost:WORDPRESS_DB_HOST=getRdsHost(),
-      debug=false,
+      debug='0', // Default to debug off
     } = wp.env;
     const WORDPRESS_DEBUG = `${debug}`;
     const WP_CLI_ALLOW_ROOT = 'true';

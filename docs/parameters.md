@@ -50,7 +50,7 @@ Conflicting or mutually exclusive parameter combinations will be caught by valid
     - idpEntityId: The shibboleth IDP entity ID. In shibboleth.xml: `ApplicationDefaults.Sessions.SSO.entityID`
     - s3ProxyHost: The value to set for the [ProxyPass directive](https://httpd.apache.org/docs/2.4/mod/mod_proxy.html#proxypass) that identifies the host name of the sigv4 signing service. If the ECS task for this service runs independently, this value will be the hosted zone root name prefixed with a value for the sigv4 signing subdomain. If the ECS container hosting the s3 proxying service runs as a ["sidecar"](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/fargate-security-considerations.html) to the wordpress service, then its value is simply `"localhost"` *(default)*.
     - TZ: The timezone that the wordpress docker container is to use by way of setting this value as an environment variable.
-    - debug: *defaults to `"false"`*. `"true"` indicates WORDPRESS_DEBUG=1 where any non-empty value will enable `WP_DEBUG` in `wp-config.php`
+    - debug: *defaults to `"0"`*. Any non-empty value other than `"0"` indicates WORDPRESS_DEBUG=1 where this will enable `WP_DEBUG` in `wp-config.php`
     - dbType: *defaults to `"serverless"`*
       - ["instance"](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.DBInstance.html)
       - ["cluster"](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.html)
