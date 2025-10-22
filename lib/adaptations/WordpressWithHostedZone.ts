@@ -11,18 +11,15 @@ export class HostedZoneWordpressEcsConstruct extends WordpressEcsConstruct {
   
   constructor(baseline: Stack, id: string, props?: any) {
     super(baseline, id, props);
-    this.certArn = this.context?.DNS?.certificateARN || '';
-    this.hostedZone = this.context?.DNS?.hostedZone || '';
+    const { context: { DNS: { certificateARN = '', hostedZone = '' } = {} } } = this;
+    this.certArn = certificateARN;
+    this.hostedZone = hostedZone;
   }
 
   adaptResourceProperties(): void {
-    const certificate:ICertificate = Certificate.fromCertificateArn(
-      this, 
-      `${this.id}-acm-cert`, 
-      this.certArn
-    );
-    const domainName:string = this.hostedZone;
-    const domainZone:IHostedZone = HostedZone.fromLookup(this, 'Zone', { domainName });
+    const { id, certArn, hostedZone:domainName} = this;
+    const certificate = Certificate.fromCertificateArn(this, `${id}-acm-cert`, certArn) satisfies ICertificate;
+    const domainZone = HostedZone.fromLookup(this, 'Zone', { domainName }) satisfies IHostedZone;
 
     // TODO: Haven't tried this out yet - don't know if it will work. Requires a pre-existing acm cert and route53 hosted zone.
     Object.assign(this.fargateServiceProps, { 

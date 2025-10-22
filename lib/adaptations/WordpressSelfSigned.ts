@@ -20,14 +20,14 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
    * Create the alb as public facing
    */
   adaptResourceProperties(): void {
-    const { vpc } = this;
+    const { vpc, id, fargateServiceProps, context: { TAGS: { Landscape } } } = this;
     const alb = new ApplicationLoadBalancer(this, `${this.id}-alb`, {
       vpc, 
       internetFacing: true,
-      loadBalancerName: `${this.id}-alb-${this.context.TAGS.Landscape}`
+      loadBalancerName: `${id}-alb-${Landscape}`
     }); 
 
-    Object.assign(this.fargateServiceProps, { 
+    Object.assign(fargateServiceProps, { 
       publicLoadBalancer: true,
       loadBalancerName: undefined,
       loadBalancer: alb,
@@ -38,6 +38,7 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
    * Create an iam server certificate, https listener, and target group for secure traffic.
    */
   adaptResources(): void {
+    const { id, containerDefProps: { containerName } } = this;
   
     // Create an https listener for the alb
     const listener443 = this.fargateService.loadBalancer.addListener(`${this.id}-https-listener`, {
@@ -55,7 +56,7 @@ export class SelfSignedWordpressEcsConstruct extends WordpressEcsConstruct {
       targetGroupName: `${this.id}-https-tg`,
       targets: [
         this.fargateService.service.loadBalancerTarget({
-          containerName: `${this.containerDefProps.containerName}`,
+          containerName: containerName!,
           containerPort: WordpressAppContainerDefConfig.SSL_HOST_PORT,
         })
       ],
