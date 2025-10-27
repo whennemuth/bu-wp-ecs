@@ -1,36 +1,126 @@
 import { Stack } from "aws-cdk-lib";
-import { WordpressEcsConstruct } from "../Wordpress";
 import { Certificate, ICertificate } from "aws-cdk-lib/aws-certificatemanager";
-import { HostedZone, IHostedZone } from "aws-cdk-lib/aws-route53";
-import { ApplicationLoadBalancedServiceRecordType } from "aws-cdk-lib/aws-ecs-patterns";
+import { ApplicationLoadBalancedFargateServiceProps, ApplicationLoadBalancedServiceRecordType } from "aws-cdk-lib/aws-ecs-patterns";
+import { ARecord, HostedZone, IHostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
+import { CloudfrontWordpressEcsConstruct } from "./WordpressBehindCloudfront";
+import { WordpressEcsConstruct } from "../Wordpress";
 
-export class HostedZoneWordpressEcsConstruct extends WordpressEcsConstruct {
-
-  private certArn = '' as string;
-  private hostedZone = '' as string;
+/**
+ * This construct applies an A record for a subdomain to an existing hosted zone targeting an
+ * existing CloudFront distribution.
+ */
+export class HostedZoneForCloudfrontWordpressEcsConstruct extends CloudfrontWordpressEcsConstruct {
   
-  constructor(baseline: Stack, id: string, props?: any) {
-    super(baseline, id, props);
-    const { context: { DNS: { certificateARN = '', hostedZone = '' } = {} } } = this;
-    this.certArn = certificateARN;
-    this.hostedZone = hostedZone;
+  constructor(params: {
+    baseline: Stack, 
+    id: string, 
+    distributionDomainName?: string,
+    props?: any 
+  }) {
+    super(params.baseline, params.id, { 
+      distributionDomainName: params.distributionDomainName, 
+      ...params.props });
+  }
+
+  /**
+   * Enforce a singleton pattern for the hosted zone construct so as to avoid name collisions
+   * @returns 
+   */
+  private getDomainZone(): IHostedZone {
+    const { domainZone } = this.props;
+    if(domainZone) return domainZone;
+    const { context: { DNS: { hostedZone:domainName = '' } = {} } } = this;
+    this.props.domainZone = HostedZone.fromLookup(this, 'Zone', { domainName }) satisfies IHostedZone;
+    return this.props.domainZone;
   }
 
   adaptResourceProperties(): void {
-    const { id, certArn, hostedZone:domainName} = this;
-    const certificate = Certificate.fromCertificateArn(this, `${id}-acm-cert`, certArn) satisfies ICertificate;
-    const domainZone = HostedZone.fromLookup(this, 'Zone', { domainName }) satisfies IHostedZone;
 
-    // TODO: Haven't tried this out yet - don't know if it will work. Requires a pre-existing acm cert and route53 hosted zone.
+    // bind getDomainZone to this
+    this.getDomainZone = this.getDomainZone.bind(this);
+
+    super.adaptResourceProperties();
+
+    // Unpack needed values
+    const { id, context: { DNS: { certificateARN:certArn = '' } = {}, STACK_ID, TAGS: { Landscape } }, getDomainZone } = this;
+
+    // Cannot proceed without a certificate
+    if( ! certArn) throw new Error('You must include a ssl certificate if involving cloudfront with hosted zone');
+
+    // Look up the hosted zone and certificate
+    const domainZone = getDomainZone();
+    const certificate = Certificate.fromCertificateArn(this, `${id}-acm-cert`, certArn) satisfies ICertificate;
+
+    Object.assign(this.fargateServiceProps, { 
+      certificate, 
+      domainName: `${STACK_ID}.${Landscape}.${domainZone}`, 
+      domainZone, 
+      redirectHTTP: true,
+      // Prevent adding an A record to the hosted zone for the ALB.
+      recordType: ApplicationLoadBalancedServiceRecordType.NONE,
+      publicLoadBalancer: true,
+      loadBalancer: this.alb,
+    } as ApplicationLoadBalancedFargateServiceProps);
+  }
+
+  adaptResources(): void {
+
+    super.adaptResources();
+
+    // Unpack/destructure needed values
+    const { id, getDomainZone, context: { DNS: { 
+      hostedZone, subdomain, cloudfront: { distributionDomainName = '' } = {} 
+    } = {} } } = this;
+
+    // Cannot proceed without a hosted zone
+    if( ! hostedZone) throw new Error('A hosted zone is required if involving cloudfront with hosted zone!');
+
+    // Warn if subdomain is not provided
+    if( ! subdomain) console.warn('A subdomain was not provided; using root domain for hosted zone.');
+
+    // Look up the hosted zone
+    const domainZone: IHostedZone = getDomainZone();
+
+    // Create the A record that points directly to the CloudFront distribution domain
+    new ARecord(this, `${id}-cloudfront-alias-record`, {
+      zone: domainZone,
+      recordName: subdomain,
+      target: RecordTarget.fromAlias({
+        bind: () => ({
+          dnsName: distributionDomainName,
+          hostedZoneId: 'Z2FDTNDATAQYW2' // Standard global CloudFront hosted zone ID
+        })
+      }),
+      comment: `ALIAS record for ${subdomain} pointing to CloudFront distribution ${distributionDomainName}`
+    });
+  }
+}
+
+/**
+ * This construct applies an A record for a subdomain to an existing hosted zone targeting the auto-created
+ * ALB created by the underlying fargate construct.
+ */
+export class HostedZoneForALBWordpressEcsConstruct extends WordpressEcsConstruct {
+
+  adaptResourceProperties(): void {
+
+    // Unpack needed values
+    const { id, context: { DNS: { certificateARN:certArn = '', hostedZone:domainName = '' } = {} } } = this;
+
+    // Look up the hosted zone and certificate
+    const domainZone = HostedZone.fromLookup(this, 'Zone', { domainName }) satisfies IHostedZone;
+    const certificate = Certificate.fromCertificateArn(this, `${id}-acm-cert`, certArn) satisfies ICertificate;
+
     Object.assign(this.fargateServiceProps, { 
       certificate, 
       domainName, 
-      domainZone, 
+      domainZone,
       // TODO: Not sure if redirectHTTP will negate health checks that are made over http (not https).
       // However, as long as the shibboleth.conf file for apache exempts the health check path, health checks over https should be ok.
       redirectHTTP: true,
       recordType: ApplicationLoadBalancedServiceRecordType.ALIAS
-     });
+    });
+
   }
 
   adaptResources(): void { /** Do nothing */ }

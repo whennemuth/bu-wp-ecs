@@ -1,22 +1,19 @@
 import { DescribeManagedPrefixListsCommand, DescribeManagedPrefixListsRequest, DescribeManagedPrefixListsResult, EC2Client } from "@aws-sdk/client-ec2";
 import { GetSecretValueCommand, GetSecretValueCommandOutput, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { Stack } from "aws-cdk-lib";
-import { Certificate, ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { CfnSecurityGroup, Peer, Port, SecurityGroup } from "aws-cdk-lib/aws-ec2";
-import { ApplicationLoadBalancedFargateServiceProps, ApplicationLoadBalancedServiceRecordType } from "aws-cdk-lib/aws-ecs-patterns";
 import { ApplicationListener, ApplicationLoadBalancer, ApplicationLoadBalancerProps, CfnListener, ListenerAction, ListenerCondition } from "aws-cdk-lib/aws-elasticloadbalancingv2";
-import { HostedZone, IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ParameterTester } from "../Utils";
 import { WordpressEcsConstruct } from "../Wordpress";
 import { WordpressAppContainerDefConfig } from "../WordpressAppContainerDefConfig";
 
 /**
  * A prexisting cloudfront distribution will be configured to "point" at the ALB created by this
- * stack as one of its origins. Thus, it would be unnecessary for the ALB to be public facing as all 
- * requests will use the distribution domain name and go through cloudfront (Requires wordpress 
- * fargate container to NOT redirect http to https).
+ * stack as one of its origins. Requires wordpress fargate container to NOT redirect http to https).
  */
 export class CloudfrontWordpressEcsConstruct extends WordpressEcsConstruct {
+
+  alb: ApplicationLoadBalancer;
   
   constructor(baseline: Stack, id: string, props?: any) {
     super(baseline, id, props);
@@ -26,13 +23,7 @@ export class CloudfrontWordpressEcsConstruct extends WordpressEcsConstruct {
 
     const {  id, vpc, props, context: { STACK_ID, DNS, TAGS: { Landscape } } } = this;
 
-    // 1) Unpack the DNS.
-    const { hostedZone, subdomain, certificateARN, cloudfront } = DNS || {};
-    if( ! hostedZone) throw new Error('A hosted zone is required if using cloudfront!');
-    if( ! subdomain) throw new Error('A subdomain is required if using cloudfront!');
-    if( ! certificateARN) throw new Error('You must include a ssl certificate using cloudfront');
-
-    // 2) Create the one security group for the ALB, which should only allow inbound requests from cloudfront
+    /** Create the one security group for the ALB, which should only allow inbound requests from cloudfront */
     const { SSL_HOST_PORT:httpsPort } = WordpressAppContainerDefConfig;
     const securityGroup = new SecurityGroup(this, `${id}-alb-sg`, {
       vpc, 
@@ -43,33 +34,25 @@ export class CloudfrontWordpressEcsConstruct extends WordpressEcsConstruct {
 
     securityGroup.addIngressRule(Peer.prefixList(prefixListId), Port.tcp(httpsPort));
 
-    // 3) Create the ALB. It must be public because cloudfront cannot reach it otherwise.
-    // However, you can still lock down ingress to cloudfront only via the security group.
-    // Also, consider: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/restrict-access-to-load-balancer.html
-    const alb = new ApplicationLoadBalancer(this, `${id}-alb`, {
+    /**
+     * Override auto-creation of the ALB by the CDK fargate construct and create it explicitly here.
+     * It must be public because cloudfront cannot reach it otherwise. However, you can still lock down ingress 
+     * to cloudfront only via the security group. Also, consider: 
+     *   https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/restrict-access-to-load-balancer.html
+     */
+    this.alb = new ApplicationLoadBalancer(this, `${id}-alb`, {
       vpc, 
       internetFacing: true,
       loadBalancerName: `${id}-alb-${Landscape}`,      
       securityGroup
     } as ApplicationLoadBalancerProps);
 
-    // 4) Have to create an escape hatch here because the cdk always adds a default inline ingress rule to the sg
-    // We do not want this ingress rule - we only want the cloudfront ingress rule, so removing it here.
+    /**
+     * Have to create an escape hatch here because the cdk always adds a default inline ingress rule to the sg
+     * We do not want this ingress rule - we only want the cloudfront ingress rule, so removing it here.
+     */
     const sg = securityGroup.node.defaultChild as CfnSecurityGroup;
     sg.addPropertyDeletionOverride('SecurityGroupIngress');
-    
-    // 5) Apply https settings to the ALB.
-    const certificate:ICertificate = Certificate.fromCertificateArn(this, `${id}-acm-cert`, certificateARN);
-    const domainZone:IHostedZone = HostedZone.fromLookup(this, 'Zone', { domainName: hostedZone });
-    Object.assign(this.fargateServiceProps, { 
-      certificate, 
-      domainName: `${STACK_ID}.${Landscape}.${hostedZone}`, 
-      domainZone, 
-      redirectHTTP: true,
-      recordType: ApplicationLoadBalancedServiceRecordType.NONE, // Keeps from adding an A record to the hosted zone
-      publicLoadBalancer: true,
-      loadBalancer: alb,
-    } as ApplicationLoadBalancedFargateServiceProps);
   }
 
   adaptResources(): void {
