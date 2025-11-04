@@ -1,0 +1,3 @@
+# Phase 2 (proposal 2) - shib auth implemented as another sidecar container in Wordpress ECS task 
+
+This approach as a tentative solution to the problem with Lambda@Edge codebase for shib auth being too big for a Viewer request function being put in an Origin request function, which presents cache problems. To avoid this issue, the shib auth functionality is instead run as another sidecar container within the ECS Wordpress task (Or possibly as another task/service within the Wordpress fargate cluster).
