@@ -29,7 +29,8 @@ The main wordpress container is performing the shibboleth client role and it is 
       "debug": "true"
     },
     "secret": {
-      "arn": "arn:aws:secretsmanager:us-east-2:037860335094:secret:dev/wp/shib-sp-test-JML3FN",
+      "spSecretArn": "arn:aws:secretsmanager:us-east-2:037860335094:secret:bu-auth/wp2/devl-JML3FN",
+      "wpSecretArn": "arn:aws:secretsmanager:us-east-2:037860335094:secret:dev/wp/shib-sp-test-JML3FN",
       "fields": {
         "dbPassword": "password",
         "configExtra": "wp-config-extra",

@@ -36,9 +36,9 @@ import { HostedZoneForALBWordpressEcsConstruct, HostedZoneForCloudfrontWordpress
   const ipAddresses = IpAddresses.cidr('10.0.0.0/21');
   const availabilityZones = [ `${region}a`, `${region}b`];
   const vpc: Vpc = new Vpc(stack, `${STACK_ID}-vpc`, { ipAddresses, availabilityZones }); 
-  const { WORDPRESS: { secret: { arn:secretArn }}} = context;
+  const { WORDPRESS: { secret: { spSecretArn }}} = context;
   const { hostedZone, certificateARN, cloudfront, cloudfront: { 
-    challengeSecretFld='', distributionDomainName='' 
+    challengeHeaderName='', distributionDomainName='' 
   } = {} } = DNS ?? {};
 
 
@@ -49,7 +49,7 @@ import { HostedZoneForALBWordpressEcsConstruct, HostedZoneForCloudfrontWordpress
   // Define a helper function to lookup cloudfront parameters indicating custom headers for shib-sp integration
   const lookupCloudfrontParameters = async () => {
     const prefixId = await lookupCloudfrontPrefixListId(region);
-    const challenge = await lookupCloudfrontHeaderChallenge(secretArn, challengeSecretFld);
+    const challenge = await lookupCloudfrontHeaderChallenge(spSecretArn, challengeHeaderName);
     return { 'cloudfront-prefix-id':prefixId, 'cloudfront-challenge':challenge };
   };
 

@@ -22,7 +22,7 @@ NOTE: mod_shib has been removed from the underlying docker image and replaced wi
     "certificateARN": "arn:aws:acm:us-east-2:037860335094:certificate/f95a0e60-a924-4fdb-9cd2-1f5dc872ab99",
     "cloudfront": {
       "challengeHeaderName": "cloudfront-challenge",
-      "challengeSecretFld": "cloudfront-challenge"
+      "distributionDomainName": "dqw4p0lvam31f.cloudfront.net"
     },
     "includeRDS": false
   },
@@ -37,7 +37,8 @@ NOTE: mod_shib has been removed from the underlying docker image and replaced wi
       "debug": "true"
     },
     "secret": {
-      "arn": "arn:aws:secretsmanager:us-east-2:037860335094:secret:dev/wp/shib-sp-test-JML3FN",
+      "spSecretArn": "arn:aws:secretsmanager:us-east-2:037860335094:secret:bu-auth/wp/devl-JML3FN",
+      "wpSecretArn": "arn:aws:secretsmanager:us-east-2:037860335094:secret:dev/wp/shib-sp-test-JML3FN",
       "fields": {
         "dbPassword": "password",
         "configExtra": "wp-config-extra",

@@ -32,7 +32,7 @@ export class BuWordpressRdsConstruct extends Construct {
 
   private build = () => {
     const { DEFAULT_DB_TYPE, DEFAULT_PORT } = BuWordpressRdsConstruct;
-    const { id, context, context: { TAGS: { Landscape }, DNS, WORDPRESS: { env: { 
+    const { id, context, context: { TAGS: { Landscape }, DNS, WORDPRESS: { secret: { wpSecretArn }, env: { 
       dbType = DEFAULT_DB_TYPE, dbName, dbUser, dbPort = DEFAULT_PORT 
     } } } } = this;
     // const dbType = env.dbType ?? DEFAULT_DB_TYPE;
@@ -41,7 +41,7 @@ export class BuWordpressRdsConstruct extends Construct {
     const { vpc } = this.props;
 
     const credentials: Credentials = Credentials.fromSecret(
-      Secret.fromSecretCompleteArn(this, `${id}-secret`, context.WORDPRESS.secret.arn), dbUser
+      Secret.fromSecretCompleteArn(this, `${id}-secret`, wpSecretArn), dbUser
     );
 
     this.port = Number.parseInt(dbPort);

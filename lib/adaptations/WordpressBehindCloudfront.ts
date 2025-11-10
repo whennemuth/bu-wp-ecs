@@ -113,13 +113,13 @@ export async function lookupCloudfrontPrefixListId(region:string): Promise<strin
 
 /**
  * Lookup the cloudfront header challenge value in secrets manager.
- * @param secretArn 
- * @param secretFld 
+ * @param spSecretArn The arn of the secrets manager secret containing the cloudfront header challenge.
+ * @param secretFld The field name in the secret containing the challenge value.
  * @returns 
  */
-export const lookupCloudfrontHeaderChallenge = async (secretArn:string, secretFld:string) => {
-  const command = new GetSecretValueCommand({ SecretId: secretArn });
-  const region = secretArn.split(':')[3];
+export const lookupCloudfrontHeaderChallenge = async (spSecretArn:string, secretFld:string) => {
+  const command = new GetSecretValueCommand({ SecretId: spSecretArn });
+  const region = spSecretArn.split(':')[3];
   const secretsClient = new SecretsManagerClient({ region });
   const response:GetSecretValueCommandOutput = await secretsClient.send(command);
   if( ! response.SecretString) {
