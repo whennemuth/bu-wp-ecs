@@ -32,7 +32,7 @@ export class BuWordpressRdsConstruct extends Construct {
 
   private build = () => {
     const { DEFAULT_DB_TYPE, DEFAULT_PORT } = BuWordpressRdsConstruct;
-    const { id, context, context: { TAGS: { Landscape }, DNS, WORDPRESS: { secret: { wpSecretArn }, env: { 
+    const { id, context: { TAGS: { Landscape }, DNS, WORDPRESS: { secret: { wpSecretArn }, env: { 
       dbType = DEFAULT_DB_TYPE, dbName, dbUser, dbPort = DEFAULT_PORT 
     } } } } = this;
     // const dbType = env.dbType ?? DEFAULT_DB_TYPE;
