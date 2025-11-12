@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { App, Stack, StackProps } from 'aws-cdk-lib';
+import { App, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { IContext } from '../contexts/IContext';
 import * as context from '../contexts/context.json';
@@ -9,9 +9,17 @@ import { StandardWordpressConstruct, WordpressEcsConstruct } from '../lib/Wordpr
 import { CloudfrontWordpressEcsConstruct, lookupCloudfrontHeaderChallenge, lookupCloudfrontPrefixListId } from '../lib/adaptations/WordpressBehindCloudfront';
 import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
 import { HostedZoneForALBWordpressEcsConstruct, HostedZoneForCloudfrontWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
+import { CustomResourceConfig } from 'aws-cdk-lib/custom-resources';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
 (async () => {
+  // Instatiate the app
   const app = new App();
+
+  // Configure custom resource defaults
+  CustomResourceConfig.of(app).addRemovalPolicy(RemovalPolicy.DESTROY);
+  CustomResourceConfig.of(app).addLogRetentionLifetime(RetentionDays.ONE_WEEK);
+  
   app.node.setContext('stack-parms', context);
 
   // Deconstruct the context
