@@ -16,7 +16,7 @@ graph TB
             end
             
             subgraph RTR[Web Router Stack]
-                ALB1[Application Load Balancer]
+                ALB1[Application<br>Load Balancer]
                 subgraph ECS[ECS Cluster]
                     NGINX[Nginx Router Container<br/>Complex Routing Decisions]
                 end
@@ -25,18 +25,18 @@ graph TB
 
         subgraph CSS[CSS Account]
             subgraph STACK[Wordpress Stack]
-                ALB2[Application Load Balancer]
+                ALB2[Application<br>Load Balancer]
                 subgraph FG[Fargate Cluster]
                     subgraph WordPress Task
-                        WP[WordPress Container<br/>Apache + PHP]
+                        WP[WordPress Container<br/>&lpar;Apache + PHP&rpar;]
                         SIDECAR[SigV4 Proxy Container]
                     end
                 end
             end
             
-            ECR[Elastic Container Registry<br/>WordPress Image]
+            ECR[Elastic Container<br>Registry<br/>&lpar;WordPress Image&rpar;]
             SM[Secrets Manager<br/>Configuration]
-            RDS[RDS MySQL Database]
+            RDS[RDS MySQL<br>Database]
             OL[Object Lambda Access Point &lpar;Authorize&rpar;]
             S3[S3 Bucket<br/>Assets/Files]
         end
