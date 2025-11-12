@@ -11,14 +11,15 @@ import { WordpressEcsConstruct } from "../Wordpress";
  */
 export class HostedZoneForCloudfrontWordpressEcsConstruct extends CloudfrontWordpressEcsConstruct {
   
-  constructor(params: {
+  constructor(private params: {
     baseline: Stack, 
     id: string, 
     distributionDomainName?: string,
+    ignoreRoute53?: boolean,
     props?: any 
   }) {
     super(params.baseline, params.id, { 
-      distributionDomainName: params.distributionDomainName, 
+      distributionDomainName: params.distributionDomainName, ignoreRoute53: params.ignoreRoute53,
       ...params.props });
   }
 
@@ -42,7 +43,12 @@ export class HostedZoneForCloudfrontWordpressEcsConstruct extends CloudfrontWord
     super.adaptResourceProperties();
 
     // Unpack needed values
-    const { id, context: { DNS: { certificateARN:certArn = '' } = {}, STACK_ID, TAGS: { Landscape } }, getDomainZone } = this;
+    const { 
+      id, getDomainZone, context: { 
+        DNS: { certificateARN:certArn = '' } = {}, 
+        STACK_ID, TAGS: { Landscape } 
+      } 
+    } = this;
 
     // Cannot proceed without a certificate
     if( ! certArn) throw new Error('You must include a ssl certificate if involving cloudfront with hosted zone');
@@ -68,7 +74,7 @@ export class HostedZoneForCloudfrontWordpressEcsConstruct extends CloudfrontWord
     super.adaptResources();
 
     // Unpack/destructure needed values
-    const { id, getDomainZone, context: { DNS: { 
+    const { id, getDomainZone, props: { ignoreRoute53=false }, context: { DNS: { 
       hostedZone, subdomain, cloudfront: { distributionDomainName = '' } = {} 
     } = {} } } = this;
 
@@ -80,6 +86,12 @@ export class HostedZoneForCloudfrontWordpressEcsConstruct extends CloudfrontWord
 
     // Look up the hosted zone
     const domainZone: IHostedZone = getDomainZone();
+
+    // Abort the rest if instructed to ignore route53
+    if(ignoreRoute53) {
+      console.log(`Ignoring route53 record creation for subdomain ${subdomain} in hosted zone ${hostedZone}`);
+      return;
+    }
 
     // Create the A record that points directly to the CloudFront distribution domain
     new ARecord(this, `${id}-cloudfront-alias-record`, {

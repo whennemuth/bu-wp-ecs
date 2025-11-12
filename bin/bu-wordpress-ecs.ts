@@ -9,8 +9,13 @@ import { StandardWordpressConstruct, WordpressEcsConstruct } from '../lib/Wordpr
 import { CloudfrontWordpressEcsConstruct, lookupCloudfrontHeaderChallenge, lookupCloudfrontPrefixListId } from '../lib/adaptations/WordpressBehindCloudfront';
 import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
 import { HostedZoneForALBWordpressEcsConstruct, HostedZoneForCloudfrontWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
+import { findARecord } from './route-53';
 import { CustomResourceConfig } from 'aws-cdk-lib/custom-resources';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+
+export const getStackName = ():string => {
+  return `${context.STACK_ID}-${context.TAGS.Landscape}`;
+}
 
 (async () => {
   // Instatiate the app
@@ -31,7 +36,7 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
   // Define the stack properties
   const stackProps: StackProps = {
-    stackName: `${STACK_ID}-${Landscape}`,
+    stackName: getStackName(),
     description: 'Fargate ECS cluster for wordpress, s3proxy, and rds',
     env: { account, region },
     tags: { Service, Function, Landscape }
@@ -45,7 +50,7 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
   const availabilityZones = [ `${region}a`, `${region}b`];
   const vpc: Vpc = new Vpc(stack, `${STACK_ID}-vpc`, { ipAddresses, availabilityZones }); 
   const { WORDPRESS: { secret: { spSecretArn }}} = context;
-  const { hostedZone, certificateARN, cloudfront, cloudfront: { 
+  const { hostedZone, subdomain, certificateARN, cloudfront, cloudfront: { 
     challengeHeaderName='', distributionDomainName='' 
   } = {} } = DNS ?? {};
 
@@ -69,12 +74,22 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
     ecs = new SelfSignedWordpressEcsConstruct(stack, wpId, { vpc, rdsHostName, iamServerCertArn });
   }
   else if(distributionDomainName && hostedZone) {
-    // Define an ECS construct that routes through a pre-existing cloudfront distribution via route53.
+    // Define an ECS construct that is routed to through a pre-existing cloudfront distribution via route53.
     const cfParms = await lookupCloudfrontParameters();
+
+    // Find out if an A record for the subdomain already exists AND was not created by this stack.
+    let ignoreRoute53:boolean = false;
+    if( subdomain && hostedZone ) {
+      const record = await findARecord(hostedZone, subdomain, region);
+      if(record.recordSet && ! record.createdByThisStack) {
+        ignoreRoute53 = true;
+      }
+    }
+
     ecs = new HostedZoneForCloudfrontWordpressEcsConstruct({
       baseline: stack,
       id: wpId,
-      props: { vpc, rdsHostName, ...cfParms },
+      props: { vpc, rdsHostName, ignoreRoute53, ...cfParms },
       distributionDomainName
     });
   }
