@@ -25,7 +25,6 @@ export interface DNS {
 
 export interface Cloudfront {
   challengeHeaderName: string;
-  challengeSecretFld:  string;
   distributionDomainName?: string;
 }
 
@@ -73,11 +72,12 @@ export interface WordpressEnv {
 }
 
 export interface WordpressSecret {
-  arn:         string;
-  fields:      WordpressSecretFields;
+  wpSecretArn:         string;
+  spSecretArn:         string;
+  fields:      SecretFieldNames;
 }
 
-export interface WordpressSecretFields {
+export interface SecretFieldNames {
   dbPassword:  string;
   configExtra: string;
   spKey:       string;

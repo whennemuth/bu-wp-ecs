@@ -64,7 +64,8 @@ Conflicting or mutually exclusive parameter combinations will be caught by valid
         The dynamically generated dns for the rds instance/cluster will be referenced: 
   - secret:
     *SEE: [Using Secrets Manager](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html) for background information on how secrets work as environment variables with ECS*
-    - name: The name of a secrets manager secret that contains passwords and other sensitive settings for wordpress.
+    - spSecretArn: The arn of a shared secrets manager secret that contains keys and certs necessary for shibboleth authentication.
+    - wpSecretArn: The arn of a wordpress-only secrets manager secret that contains the database password, WORDPRESS_CONFIG_EXTRA content, and any other sensitive fields specific to Wordpress operation. 
     - fields:
       - dbUser: The name of the entry in the secret that contains the user name of the administrator of the wordpress mysql database.
         *NOTE: The [Credentials.fromSecret](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_rds.Credentials.html#static-fromwbrsecretsecret-username) cdk method expects this value to be `"username"`*

@@ -66,7 +66,7 @@ export class WordpressAppContainerDefConfig {
 
     // Define the contaier secrets
     const {
-      arn:secretArn, fields: { configExtra, dbPassword, spCert, spKey }
+      spSecretArn, wpSecretArn, fields: { configExtra, dbPassword, spCert, spKey }
     } = wp.secret;
     
     return {
@@ -94,13 +94,13 @@ export class WordpressAppContainerDefConfig {
       // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html
       secrets: {
         WORDPRESS_CONFIG_EXTRA: ecs.Secret.fromSecretsManager(
-          Secret.fromSecretCompleteArn(scope, configExtra, secretArn), configExtra),
+          Secret.fromSecretCompleteArn(scope, configExtra, wpSecretArn), configExtra),
         WORDPRESS_DB_PASSWORD: ecs.Secret.fromSecretsManager(
-          Secret.fromSecretCompleteArn(scope, dbPassword, secretArn), dbPassword),
+          Secret.fromSecretCompleteArn(scope, dbPassword, wpSecretArn), dbPassword),
         SHIB_SP_KEY: ecs.Secret.fromSecretsManager(
-          Secret.fromSecretCompleteArn(scope, spKey, secretArn), spKey),
+          Secret.fromSecretCompleteArn(scope, spKey, spSecretArn), spKey),
         SHIB_SP_CERT: ecs.Secret.fromSecretsManager(
-          Secret.fromSecretCompleteArn(scope, spCert, secretArn), spCert),        
+          Secret.fromSecretCompleteArn(scope, spCert, spSecretArn), spCert),
       }
     } as ecs.ContainerDefinitionOptions
   }

@@ -12,7 +12,8 @@
     "deploy": "cdk deploy --no-rollback --require-approval never",
     "teardown": "cdk destroy -f",
     "redeploy": "cdk destroy -f && npm run deploy",
-    "synth": "cdk synth 2>&1 | tee cdk.out/Stack.yaml"
+    "synth": "cdk synth 2>&1 | tee cdk.out/Stack.yaml",
+    "create-secret": "ts-node -r dotenv/config -e \"require('./bin/secrets-manager.ts').createOrUpdateSecrets()\""
   },
   "devDependencies": {
     "@types/jest": "^29.4.0",
