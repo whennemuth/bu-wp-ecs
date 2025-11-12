@@ -1,8 +1,9 @@
 import { CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { SecurityGroup } from "aws-cdk-lib/aws-ec2";
-import { Cluster, ContainerDefinitionOptions, FargateTaskDefinition, PropagatedTagSource } from 'aws-cdk-lib/aws-ecs';
+import { Cluster, ContainerDefinitionOptions, ContainerInsights, FargateTaskDefinition, PropagatedTagSource } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService as albfs, ApplicationLoadBalancedFargateServiceProps as albfsp } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { AdaptableConstruct, FargateService } from './AdaptableFargateService';
@@ -55,13 +56,25 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       securityGroupName: `${stackId}-fargate-${Landscape}-sg`,
       description: 'Allows for ingress to the wordpress rds db from ecs tasks and selected vpn subnets.',
       allowAllOutbound: true,
-    });  
+    });
+
+    const clusterName = `${id}-cluster-${Landscape}`;
+
+    // Create a log group with the anticipated name of the log group Container Insights would create automatically.
+    // This ensures the log group will not survive stack deletion, and retention policy can be controlled.
+    new LogGroup(this, 'ContainerInsightsPerformanceLog', {
+      logGroupName: `/aws/ecs/containerinsights/${clusterName}/performance`,
+      retention: RetentionDays.ONE_WEEK,
+      removalPolicy: RemovalPolicy.DESTROY
+    });
     
     this.fargateServiceProps = {
       serviceName: `${id}-service-${Landscape}`,
       cluster: new Cluster(this, `${id}-cluster`, {
-        clusterName: `${id}-cluster-${Landscape}`,
-        containerInsights: true,
+        clusterName,
+        containerInsightsV2: ContainerInsights.ENABLED,
+        // ContainerInsights.ENHANCED can generate 10-20x more metrics than standard Container Insights, 
+        // so the CloudWatch costs can be significantly higher.
         vpc
       }),
       enableExecuteCommand: true,
