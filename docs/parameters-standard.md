@@ -8,7 +8,6 @@ NOTE: mod_shib has been removed from the underlying docker image and replaced wi
 ```
 {
   "STACK_ID": "wp",
-  "STACK_NAME": "wp-stack",
   "STACK_DESCRIPTION": "The standard Boston University Wordpress service",
   "PREFIXES": {
     "wordpress": "app",
@@ -35,7 +34,7 @@ NOTE: mod_shib has been removed from the underlying docker image and replaced wi
   "WORDPRESS": {
     "dockerImage": "037860335094.dkr.ecr.us-east-2.amazonaws.com/bu-wordpress-build:lambda-weblogin-shibless",
     "env": {
-      "debug": true
+      "debug": "true"
     },
     "secret": {
       "arn": "arn:aws:secretsmanager:us-east-2:037860335094:secret:dev/wp/shib-sp-test-JML3FN",

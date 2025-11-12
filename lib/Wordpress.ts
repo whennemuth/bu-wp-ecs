@@ -40,11 +40,11 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
   setResourceProperties(): void {
 
-    const { id, vpc, context: { TAGS: { Landscape }, WORDPRESS } } = this;
+    const { id, vpc, context: { TAGS: { Landscape }, STACK_ID: stackId, S3PROXY } } = this;
 
     this.containerDefProps = new WordpressAppContainerDefConfig().getProperties(this);
 
-    if(this.context.S3PROXY) {
+    if(S3PROXY) {
       this.sidecarContainerDefProps = new WordpressS3ProxyContainerDefConfig().setPrefix('s3proxy').getProperties(this);
     }
     
@@ -52,7 +52,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
     this._securityGroup = new SecurityGroup(this, `${id}-fargate-sg`, {
       vpc, 
-      securityGroupName: `wp-fargate-${Landscape}-sg`,
+      securityGroupName: `${stackId}-fargate-${Landscape}-sg`,
       description: 'Allows for ingress to the wordpress rds db from ecs tasks and selected vpn subnets.',
       allowAllOutbound: true,
     });  
@@ -81,16 +81,16 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
 
   buildResources(): void {
 
-    const { id, fargateServiceProps, containerDefProps, context: { WORDPRESS }, setTaskAutoScaling,
+    const { scope, id, fargateServiceProps, containerDefProps, context: { DNS, S3PROXY }, setTaskAutoScaling, setStackTags,
        setRedisCaching, sidecarContainerDefProps: _sidecarContainerDefProps, taskDefProps, healthcheck } = this;
 
-    this.setStackTags();
+    setStackTags();
 
     const wordpressTaskDef = new FargateTaskDefinition(this, `${id}-taskdef`, taskDefProps);
 
     wordpressTaskDef.addContainer(`${id}-taskdef-wp`, containerDefProps);
 
-    if(this.context.S3PROXY) {
+    if(S3PROXY) {
       wordpressTaskDef.addContainer(`${id}-taskdef-s3proxy`, _sidecarContainerDefProps);
     }
 
@@ -130,14 +130,13 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
     }));
 
     const { noneBlank } = ParameterTester;
-    const { DNS } = this.context;
     const { hostedZone, subdomain, certificateARN } = DNS || {};
 
     if(noneBlank(hostedZone, subdomain, certificateARN)) {
       // Ensure the HTTP_HOST wordpress container environment variable is the dns name of the route53 and cloudfront custom domain.
       wordpressTaskDef.findContainer('wordpress')?.addEnvironment('HTTP_HOST', subdomain!);
       wordpressTaskDef.findContainer('wordpress')?.addEnvironment('SERVER_NAME', subdomain!);
-      new CfnOutput(this.scope, 'CloudFrontDistributionURL', {
+      new CfnOutput(scope, 'CloudFrontDistributionURL', {
         value: `https://${subdomain}`,
         description: 'CloudFront Distribution URL',
       });

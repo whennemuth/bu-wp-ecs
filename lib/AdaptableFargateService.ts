@@ -107,7 +107,7 @@ export abstract class AdaptableConstruct extends Construct {
    * @returns 
    */
   public setRedisCaching = (wordpressTaskDef:FargateTaskDefinition): void => {
-    const { vpc, context: { REDIS } } = this;
+    const { id, vpc, context: { REDIS, TAGS: { Landscape } } } = this;
     if( ! REDIS ) return;
 
     const { cacheNodeType='cache.t3.micro', numCacheNodes=1 } = REDIS; // Set defaults
@@ -115,10 +115,10 @@ export abstract class AdaptableConstruct extends Construct {
     this._securityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(6379), 'Allow inbound TCP traffic on the Redis port');
     
     // Make a subnet group for the redis cluster.
-    const redisSubnetGroup = new CfnSubnetGroup(this, `${this.id}-redis-subnet-group`, {
+    const redisSubnetGroup = new CfnSubnetGroup(this, `${id}-redis-subnet-group`, {
       description: 'Subnet group for the redis cluster.',
       subnetIds: vpc.privateSubnets.map( subnet => subnet.subnetId ),
-      cacheSubnetGroupName: `${this.id}-redis-subnet-group-name`,
+      cacheSubnetGroupName: `${id}-${Landscape}-redis-sg`,
     });
 
     // Setup properties for the redis cluster.
@@ -131,7 +131,7 @@ export abstract class AdaptableConstruct extends Construct {
     };
 
     // Create the redis cluster, only after the subnet group is created.
-    const redisCluster = new CfnCacheCluster(this, `${this.id}-redis-cluster`, redisClusterProps);
+    const redisCluster = new CfnCacheCluster(this, `${id}-redis-cluster`, redisClusterProps);
     redisCluster.addDependency(redisSubnetGroup);
 
     // The wordpress container needs to find details of redis in its environment.

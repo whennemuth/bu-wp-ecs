@@ -16,14 +16,14 @@ const render = async ():Promise<void> => {
 
   // Deconstruct the context
   const { 
-    ACCOUNT:account, REGION:region, STACK_ID, STACK_NAME, DNS,
+    ACCOUNT:account, REGION:region, STACK_ID, DNS,
     TAGS: { Service, Function, Landscape }, 
     PREFIXES: { wordpress:pfxWordpress, rds:pfxRds }
   } = context as IContext;
 
   // Define the stack properties
   const stackProps: StackProps = {
-    stackName: `${STACK_NAME}-${Landscape}`,
+    stackName: `${STACK_ID}-${Landscape}`,
     description: 'Fargate ECS cluster for wordpress, s3proxy, and rds',
     env: { account, region },
     tags: { Service, Function, Landscape }

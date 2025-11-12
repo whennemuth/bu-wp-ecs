@@ -4,7 +4,6 @@
 
 export interface IContext {
   STACK_ID:           string;
-  STACK_NAME:         string;
   PREFIXES:           Prefixes;
   ACCOUNT:            string;
   REGION:             string;
@@ -69,7 +68,7 @@ export interface WordpressEnv {
   dbUser?:           string;
   dbName?:           string;
   dbPort?:           string;
-  debug?:            boolean;
+  debug?:            any;
 }
 
 export interface WordpressSecret {

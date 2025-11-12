@@ -8,7 +8,6 @@ The main wordpress container is performing the shibboleth client role and it is 
 ```
 {
   "STACK_ID": "wp",
-  "STACK_NAME": "wp-stack",
   "STACK_DESCRIPTION": "The standard Boston University Wordpress service",
   "PREFIXES": {
     "wordpress": "app",
@@ -27,7 +26,7 @@ The main wordpress container is performing the shibboleth client role and it is 
     "env": {
       "spEntityId": "https://*.kualitest.research.bu.edu/shibboleth",
       "idpEntityId": "https://shib-test.bu.edu/idp/shibboleth",
-      "debug": true
+      "debug": "true"
     },
     "secret": {
       "arn": "arn:aws:secretsmanager:us-east-2:037860335094:secret:dev/wp/shib-sp-test-JML3FN",

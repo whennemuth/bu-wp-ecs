@@ -31,23 +31,24 @@ export class BuWordpressRdsConstruct extends Construct {
   }
 
   private build = () => {
-    const { id, context, context: { TAGS, DNS, WORDPRESS: { env } } } = this;
     const { DEFAULT_DB_TYPE, DEFAULT_PORT } = BuWordpressRdsConstruct;
-    const dbType = env.dbType ?? DEFAULT_DB_TYPE;
+    const { id, context, context: { TAGS: { Landscape }, DNS, WORDPRESS: { env: { 
+      dbType = DEFAULT_DB_TYPE, dbName, dbUser, dbPort = DEFAULT_PORT 
+    } } } } = this;
+    // const dbType = env.dbType ?? DEFAULT_DB_TYPE;
     const hostedZone = DNS?.hostedZone;
     const addRecordToHostedZone = DNS?.includeRDS;
     const { vpc } = this.props;
 
     const credentials: Credentials = Credentials.fromSecret(
-      Secret.fromSecretCompleteArn(this, `${id}-secret`, context.WORDPRESS.secret.arn),
-      env.dbUser
+      Secret.fromSecretCompleteArn(this, `${id}-secret`, context.WORDPRESS.secret.arn), dbUser
     );
 
-    this.port = Number.parseInt(env?.dbPort ?? DEFAULT_PORT);
+    this.port = Number.parseInt(dbPort);
 
     this.securityGroup = new SecurityGroup(this, `${id}-mysql-sg`, {
       vpc, 
-      securityGroupName: `wp-rds-mysql-${TAGS.Landscape}-sg`,
+      securityGroupName: `wp-rds-mysql-${Landscape}-sg`,
       description: 'Allows for ingress to the wordpress rds db from ecs tasks and selected vpn subnets.',
       allowAllOutbound: true,
     });
@@ -63,7 +64,7 @@ export class BuWordpressRdsConstruct extends Construct {
           }),
           // enablePerformanceInsights: true,
           copyTagsToSnapshot: true,
-          databaseName: env.dbName,
+          databaseName: dbName,
           credentials,
           instanceType: InstanceType.of( InstanceClass.T3, InstanceSize.SMALL ),
           securityGroups: [ this.securityGroup ],
@@ -96,7 +97,7 @@ export class BuWordpressRdsConstruct extends Construct {
           serverlessV2MinCapacity: AuroraCapacityUnit.ACU_1,
           serverlessV2MaxCapacity: AuroraCapacityUnit.ACU_8,
           copyTagsToSnapshot: true,
-          defaultDatabaseName: env.dbName,
+          defaultDatabaseName: dbName,
           credentials,
           securityGroups: [ this.securityGroup ],
           removalPolicy: RemovalPolicy.DESTROY,
@@ -115,7 +116,7 @@ export class BuWordpressRdsConstruct extends Construct {
             version: AuroraMysqlEngineVersion.VER_3_04_0,
           }),
           copyTagsToSnapshot: true,
-          defaultDatabaseName: env.dbName,
+          defaultDatabaseName: dbName,
           backupRetention: Duration.days(7),
           credentials,
           securityGroups: [ this.securityGroup ],
@@ -142,7 +143,7 @@ export class BuWordpressRdsConstruct extends Construct {
 
     // Add a CNAME to the hosted zone indicated in the context record in order to enable dns routing to the db instance/cluster.
     if(hostedZone && addRecordToHostedZone) {
-      this.dnsRecordAddress = `${TAGS.Landscape}.db.${hostedZone}`;
+      this.dnsRecordAddress = `${Landscape}.db.${hostedZone}`;
       new CnameRecord(this, `${id}-mysql-cname`, {
         domainName: this.rdsSocketAddress,
         zone: HostedZone.fromLookup(this, `${id}-mysql-hostedzone`, { domainName: hostedZone }),
