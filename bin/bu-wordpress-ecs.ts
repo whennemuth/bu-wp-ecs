@@ -8,9 +8,9 @@ import { BuWordpressRdsConstruct as RdsConstruct } from '../lib/Rds';
 import { StandardWordpressConstruct, WordpressEcsConstruct } from '../lib/Wordpress';
 import { CloudfrontWordpressEcsConstruct, lookupCloudfrontHeaderChallenge, lookupCloudfrontPrefixListId } from '../lib/adaptations/WordpressBehindCloudfront';
 import { SelfSignedWordpressEcsConstruct } from '../lib/adaptations/WordpressSelfSigned';
-import { HostedZoneWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
+import { HostedZoneForALBWordpressEcsConstruct, HostedZoneForCloudfrontWordpressEcsConstruct } from '../lib/adaptations/WordpressWithHostedZone';
 
-const render = async ():Promise<void> => {
+(async () => {
   const app = new App();
   app.node.setContext('stack-parms', context);
 
@@ -18,7 +18,7 @@ const render = async ():Promise<void> => {
   const { 
     ACCOUNT:account, REGION:region, STACK_ID, DNS,
     TAGS: { Service, Function, Landscape }, 
-    PREFIXES: { wordpress:pfxWordpress, rds:pfxRds }
+    PREFIXES: { wordpress:pfxWordpress, rds:pfxRds },
   } = context as IContext;
 
   // Define the stack properties
@@ -37,30 +37,53 @@ const render = async ():Promise<void> => {
   const availabilityZones = [ `${region}a`, `${region}b`];
   const vpc: Vpc = new Vpc(stack, `${STACK_ID}-vpc`, { ipAddresses, availabilityZones }); 
   const { WORDPRESS: { secret: { arn:secretArn }}} = context;
-  const { hostedZone, certificateARN, cloudfront } = DNS ?? {};
+  const { hostedZone, certificateARN, cloudfront, cloudfront: { 
+    challengeSecretFld='', distributionDomainName='' 
+  } = {} } = DNS ?? {};
+
 
   // Define the RDS construct
   const rds = new RdsConstruct(stack, rdsId, { vpc });
   const { endpointAddress:rdsHostName } = rds;
 
-  // Define the ECS construct
+  // Define a helper function to lookup cloudfront parameters indicating custom headers for shib-sp integration
+  const lookupCloudfrontParameters = async () => {
+    const prefixId = await lookupCloudfrontPrefixListId(region);
+    const challenge = await lookupCloudfrontHeaderChallenge(secretArn, challengeSecretFld);
+    return { 'cloudfront-prefix-id':prefixId, 'cloudfront-challenge':challenge };
+  };
+
   let ecs:WordpressEcsConstruct;
+
   if( ! certificateARN) {
+    // Define an ECS construct that routes https via a self-signed iam certificate.
     const iamServerCertArn = await checkIamServerCertificate();
     ecs = new SelfSignedWordpressEcsConstruct(stack, wpId, { vpc, rdsHostName, iamServerCertArn });
   }
-  else if(cloudfront) {
-    const { challengeSecretFld } = cloudfront;
-    const prefixId = await lookupCloudfrontPrefixListId(region);
-    const challenge = await lookupCloudfrontHeaderChallenge(secretArn, challengeSecretFld);
+  else if(distributionDomainName && hostedZone) {
+    // Define an ECS construct that routes through a pre-existing cloudfront distribution via route53.
+    const cfParms = await lookupCloudfrontParameters();
+    ecs = new HostedZoneForCloudfrontWordpressEcsConstruct({
+      baseline: stack,
+      id: wpId,
+      props: { vpc, rdsHostName, ...cfParms },
+      distributionDomainName
+    });
+  }
+  else if(cloudfront && ! hostedZone) {
+    // Define an ECS construct that accepts traffic only from a pre-existing cloudfront distribution 
+    // on its default domain that is configured to route to the ALB created by the fargate construct.
+    const cfParms = await lookupCloudfrontParameters();
     ecs = new CloudfrontWordpressEcsConstruct(stack, wpId, { 
-      vpc, rdsHostName, 'cloudfront-prefix-id':prefixId, 'cloudfront-challenge':challenge,
+      vpc, rdsHostName, ...cfParms
     });
   }
   else if(hostedZone) {
-    ecs = new HostedZoneWordpressEcsConstruct(stack, wpId, { vpc, rdsHostName });
+    // Define an ECS construct that routes through the auto-created ALB of the fargate construct via route53.
+    ecs = new HostedZoneForALBWordpressEcsConstruct(stack, wpId, { vpc, rdsHostName });
   }
   else {
+    // Define a standard ECS construct that is not publicly addressable.
     console.log("WARNING: This fargate service will not be publicly addressable. " + 
       "Some modification after stack creation will be required.");
     ecs = new StandardWordpressConstruct(stack, wpId, { vpc, rdsHostName });
@@ -68,15 +91,7 @@ const render = async ():Promise<void> => {
 
   // Grant wordpress access to the database
   rds.addSecurityGroupIngressTo(ecs.securityGroup.securityGroupId);
-}
-
-render()
-.then(() => {
-  console.log('Render complete!')
-})
-.catch(e => {
-  JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
-});
+})();
 
    
 

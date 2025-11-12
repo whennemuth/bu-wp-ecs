@@ -144,7 +144,7 @@ export abstract class AdaptableConstruct extends Construct {
   /**
    * Set the tags for the stack
    */
-  setStackTags() {
+  setStackTags = () => {
     if( this.scope instanceof Stack) {
       var tags: object = this.context.TAGS;
       for (const [key, value] of Object.entries(tags)) {
