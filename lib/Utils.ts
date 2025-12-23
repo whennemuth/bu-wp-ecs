@@ -11,3 +11,10 @@ const someBlankSomeNot = (...a:any) => anyBlank(...a) && anyNotBlank(...a);
 export const ParameterTester = {
   isBlank, isNotBlank, anyBlank, anyNotBlank, allBlank, noneBlank, someBlankSomeNot
 }
+
+export const logHeader = (header:string) => {
+  const spacer = ' '.repeat((80 - header.length) / 2);
+  console.log('\n' + '='.repeat(80));
+  console.log(`${spacer}${header}`);
+  console.log('='.repeat(80));
+}
