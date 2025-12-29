@@ -4,7 +4,7 @@ import { Peer, Port, SecurityGroup, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { ContainerDefinitionOptions, FargateTaskDefinition, FargateTaskDefinitionProps, ScalableTaskCount } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService as albfs, ApplicationLoadBalancedFargateServiceProps as albfsp } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Construct } from 'constructs';
-import { IContext } from '../contexts/IContext';
+import { IContext } from '../context/IContext';
 import { CfnCacheCluster, CfnSubnetGroup } from 'aws-cdk-lib/aws-elasticache';
 
 /**

@@ -1,5 +1,5 @@
 import { CreateSecretCommand, CreateSecretCommandOutput, GetSecretValueCommand, GetSecretValueCommandOutput, SecretsManagerClient, UpdateSecretCommand, UpdateSecretCommandOutput } from "@aws-sdk/client-secrets-manager";
-import { SecretFieldNames } from "../contexts/IContext";
+import { SecretFieldNames } from "../context/IContext";
 
 export class SecretsManagerSecret {
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { App, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IpAddresses, Vpc } from 'aws-cdk-lib/aws-ec2';
-import { IContext, SecretFieldNames } from '../contexts/IContext';
-import * as context from '../contexts/context.json';
+import { IContext, SecretFieldNames } from '../context/IContext';
+import * as context from '../context/context.json';
 import { checkIamServerCertificate } from '../lib/Certificate';
 import { BuWordpressRdsConstruct as RdsConstruct } from '../lib/Rds';
 import { StandardWordpressConstruct, WordpressEcsConstruct } from '../lib/Wordpress';

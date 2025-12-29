@@ -4,7 +4,7 @@ import { AuroraCapacityUnit, AuroraMysqlEngineVersion, CfnDBCluster, CfnDBInstan
 import { CnameRecord, HostedZone } from 'aws-cdk-lib/aws-route53';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
-import { IContext, WORDPRESS_DB_TYPE } from '../contexts/IContext';
+import { IContext, WORDPRESS_DB_TYPE } from '../context/IContext';
 
 export class BuWordpressRdsConstruct extends Construct {
 

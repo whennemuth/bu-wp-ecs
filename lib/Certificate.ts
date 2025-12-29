@@ -1,5 +1,5 @@
 import * as forge from 'node-forge';
-import * as context from '../contexts/context.json';
+import * as context from '../context/context.json';
 import { IAMClient, UploadServerCertificateCommand, GetServerCertificateCommand, DeleteServerCertificateCommand } from '@aws-sdk/client-iam';
 
 export enum IamServerCertificate {

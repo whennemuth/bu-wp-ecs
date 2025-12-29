@@ -6,7 +6,7 @@ The following are either required todo items, or items to be put under considera
    Currently `""resolveJsonModule": true"` is added to compilerOptions in tsconfig.json to allow for importing json configuration files into modules as if they were javascript. For example:
 
    ```
-   import * as context from '../contexts/context.json';
+   import * as context from '../context/context.json';
    ```
 
 2. Use [AWS Cloudformation Guard](https://docs.aws.amazon.com/cfn-guard/latest/ug/what-is-guard.html)?

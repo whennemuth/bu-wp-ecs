@@ -8,7 +8,7 @@ node_modules
 cdk.out
 cdk.context.json
 
-contexts/context.json
+context/context.json
 
 # Ignore vscode workspace files (assumes files end in "workspace")
 *workspace

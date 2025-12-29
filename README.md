@@ -76,7 +76,7 @@ TODO: Include architectural explanation and diagram here.
    http://wp-jaydubbulb-alb-devl-1906413712.us-east-2.elb.amazonaws.com
    ```
 
-   So, if the s3 bucket associated with the object lambda access point configured in `S3PROXY.OLAP` of `./contexts/context.json`, is called `"wordpress-protected-s3-assets-dev-assets"`, and there is a jpg asset in that bucket at:
+   So, if the s3 bucket associated with the object lambda access point configured in `S3PROXY.OLAP` of `./context/context.json`, is called `"wordpress-protected-s3-assets-dev-assets"`, and there is a jpg asset in that bucket at:
 
    ```
    s3://wordpress-protected-s3-assets-dev-assets/original_media/jaydub-bulb.cms-devl.bu.edu/admissions/files/2018/09/cuba-abroad-banner-compressed.jpg

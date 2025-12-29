@@ -2,7 +2,7 @@ import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { IContext } from '../contexts/IContext';
+import { IContext } from '../context/IContext';
 import { AdaptableConstruct } from './AdaptableFargateService';
 import { WordpressS3ProxyContainerDefConfig } from './WordpressS3ProxyContainerDefConfig';
 

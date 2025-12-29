@@ -1,5 +1,5 @@
-import * as contextJSON from '../contexts/context.json';
-import { IContext, SecretFieldNames } from "../contexts/IContext";
+import * as contextJSON from '../context/context.json';
+import { IContext, SecretFieldNames } from "../context/IContext";
 import { SecretsManagerSecret } from "../lib/Secret";
 
 /**
