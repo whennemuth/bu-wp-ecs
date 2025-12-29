@@ -74,7 +74,7 @@ export interface WordpressEnv {
 export interface WordpressSecret {
   wpSecretArn:         string;
   spSecretArn:         string;
-  fields:      SecretFieldNames;
+  fieldNames:      SecretFieldNames;
 }
 
 export interface SecretFieldNames {

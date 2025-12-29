@@ -66,7 +66,7 @@ export class WordpressAppContainerDefConfig {
 
     // Define the contaier secrets
     const {
-      spSecretArn, wpSecretArn, fields: { configExtra, dbPassword, spCert, spKey }
+      spSecretArn, wpSecretArn, fieldNames: { configExtra, dbPassword, spCert, spKey }
     } = wp.secret;
     
     return {

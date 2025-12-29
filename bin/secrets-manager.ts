@@ -14,7 +14,7 @@ export const createOrUpdateSecrets = async () => {
 
   const { 
     STACK_ID, REGION, WORDPRESS: { 
-      secret: { fields: { configExtra, dbPassword } }, env: { dbUser } 
+      secret: { fieldNames: { configExtra, dbPassword } }, env: { dbUser } 
     } } = context;
 
   // Landscape can be overridden by env variable LANDSCAPE.

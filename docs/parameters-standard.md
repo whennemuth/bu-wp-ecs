@@ -39,7 +39,7 @@ NOTE: mod_shib has been removed from the underlying docker image and replaced wi
     "secret": {
       "spSecretArn": "arn:aws:secretsmanager:us-east-2:037860335094:secret:bu-auth/wp/devl-JML3FN",
       "wpSecretArn": "arn:aws:secretsmanager:us-east-2:037860335094:secret:dev/wp/shib-sp-test-JML3FN",
-      "fields": {
+      "fieldNames": {
         "dbPassword": "password",
         "configExtra": "wp-config-extra",
         "spKey": "wp-sp-key",
