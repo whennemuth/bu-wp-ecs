@@ -40,6 +40,13 @@ export class BuWordpressRdsConstruct extends Construct {
     const addRecordToHostedZone = DNS?.includeRDS;
     const { vpc } = this.props;
 
+    /**
+     * NOTE: The following will automatically be added to the secret along with the username
+     * and password: dbClusterIdentifier, engine, host, port, and dbname.
+     * CDK documenation states it will "create" a new secret, but they leave out that it will
+     * actually "patch" an existing secret if one is already there of the same name, instead 
+     * of "paving over" it.
+     */
     const credentials: Credentials = Credentials.fromSecret(
       Secret.fromSecretCompleteArn(this, `${id}-secret`, wpSecretArn), dbUser
     );

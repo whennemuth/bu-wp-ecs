@@ -62,7 +62,7 @@ export class HostedZoneForCloudfrontWordpressEcsConstruct extends CloudfrontWord
       domainName: `${STACK_ID}.${Landscape}.${domainZone}`, 
       domainZone, 
       redirectHTTP: true,
-      // Prevent adding an A record to the hosted zone for the ALB.
+      // Prevent the CDK from automatically adding an A record to the hosted zone for the ALB.
       recordType: ApplicationLoadBalancedServiceRecordType.NONE,
       publicLoadBalancer: true,
       loadBalancer: this.alb,

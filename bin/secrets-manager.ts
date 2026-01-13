@@ -49,7 +49,9 @@ export const createOrUpdateSecrets = async () => {
   const fldNames = { configExtra, dbPassword, spCert: 'N/A', spKey: 'N/A' } satisfies SecretFieldNames;
   const description = `Stores wordpress database username and password, and wp-config-extra, which contains sensitive values`;
 
-  const smSecret = new SecretsManagerSecret({ secretName, description, fldNames, region: REGION });
+  const smParms = { secretName, description, fldNames, region: REGION };
+  console.log(`Preparing to create or update secret with parameters: ${JSON.stringify(smParms, null, 2)}`);
+  const smSecret = new SecretsManagerSecret(smParms);
 
   smSecret
     .setValue(configExtra, WORDPRESS_CONFIG_EXTRA)

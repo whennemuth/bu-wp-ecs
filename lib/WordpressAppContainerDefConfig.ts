@@ -64,7 +64,7 @@ export class WordpressAppContainerDefConfig {
     const WORDPRESS_DEBUG = `${debug}`;
     const WP_CLI_ALLOW_ROOT = 'true';
 
-    // Define the contaier secrets
+    // Define the container secrets
     const {
       spSecretArn, wpSecretArn, fieldNames: { configExtra, dbPassword, spCert, spKey }
     } = wp.secret;

@@ -7,7 +7,7 @@ A CDK app that creates and deploys a [Cloudformation][https://docs.aws.amazon.co
 Currently, this deployment sets up an [ecs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html) [cluster](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/clusters.html) for running wordpress websites, of one [ecs service](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html). The ecs service runs a task that comprises two [container definitions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definitions).
 
 1. **Wordpress**:
-   The obvious container is one that hosts wordpress itself. In mind is something that can grow to be a candidate for hosting [Boston University wordpress websites](https://www.bu.edu/tech/services/cccs/websites/www/wordpress/).
+   The obvious container is one that hosts wordpress itself. This can be any WordPress website, though special considerations are taken to also accommodate needs specific to [Boston University wordpress websites](https://www.bu.edu/tech/services/cccs/websites/www/wordpress/).
 1. **SigV4:**
    This deployment makes assumptions about from where wordpress assets are obtained. The common setup for that would be with wordpress running against apache, which in turn maps requests for assets to locations in the file system of the same host. That approach is modified here such that those assets are stored in S3 and apache no longer retrieves them from its file system, but proxies the asset requests to corresponding locations within an s3 bucket over http. To implement the proper authorization and asset management, requests are routed through [s3 object lambda access points *(olap)*](https://docs.aws.amazon.com/AmazonS3/latest/userguide/transforming-objects.html). In order for apache to proxy requests to olap, it must apply the required signature *[(sigv4)](https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html)* to them. This suggests a second container, one that is based on [aws-sigv4-proxy](https://github.com/awslabs/aws-sigv4-proxy) and can run as a ["sidecar"](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/fargate-security-considerations.html) to the wordpress container, and to which the apache service can proxy requests to and have them signed enroute to the olap.
 
@@ -15,55 +15,122 @@ TODO: Include architectural explanation and diagram here.
 
 ### Prerequisites
 
-- [AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/home.html)
-- [AWS CLI](https://aws.amazon.com/cli/)
-- [Node & NPM](https://nodejs.org/en/download)
-- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-- Admin role for target account *(ie: Shibboleth-InfraMgt/yourself@bu.edu, for the BU CSS account)*
+1. **[AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/home.html) Installed**: Make sure you have the AWS CDK installed on your local machine. You can install it using npm:
 
-### Steps
+   ```bash
+   npm install -g aws-cdk
+   ```
 
-1. Create a `./context/context.json` file.
-   This file will contain all parameters that the cdk will use when generating the Cloudformation template it later deploys. Most of these parameters correspond to something one might otherwise use as values being supplied to Cloudformation if it were being invoked directly, but they will appear "hard-coded" in the stack template. [From CDK docs on parameters](https://docs.aws.amazon.com/cdk/v2/guide/parameters.html):
+2. **[AWS CLI](https://aws.amazon.com/cli/) Configured**: Ensure that the AWS CLI is installed and configured with the necessary credentials to access your AWS account.
 
-   > *In general, we recommend against using AWS CloudFormation parameters with the AWS CDK. The usual ways to pass values into AWS CDK apps are [context values](https://docs.aws.amazon.com/cdk/v2/guide/context.html) and environment variables. Because they are not available at synthesis time, parameter values cannot be easily used for flow control and other purposes in your CDK app.*
+3. **[Node.js](https://nodejs.org/en/download) Installed**: The AWS CDK requires Node.js. Make sure you have Node.js installed on your machine.
 
-   The following link details all context values with explanation on how to use them to modify or broaden CDK resource output. 
-   
-   - [Parameters](./docs/parameters.md)
-   
+4. **[Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) Installed**: Ensure that Git is installed on your local machine to clone repositories.
+
+5. **Access to Target AWS Account**: Ensure you have admin-level access to the target AWS account where you will be deploying the resources. This may involve assuming a specific IAM role *(ie: Shibboleth-InfraMgt/yourself@bu.edu, for the BU CSS account)*.
+
+### Build Steps
+
+1. Put your AWS profile in the environment:
+
+   ```
+   export AWS_PROFILE=[your profile]
+   ```
+
 2. Obtain [security credentials](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html?icmpid=docs_homepage_genref) for the admin-level [IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) you will be using for accessing the aws account to lookup and/or deploy resources.
    Create a [named profile](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-using-profiles) out of these credentials in your [`~/.aws/credentials`](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where) file.
+
+3. Clone the Repository:
+
+      ```bash
+      git clone https://github.com/your-repo/bu-wp-ecs.git
+      cd bu-wp-ecs
+      ```
    
-2. Install all dependencies:
+4. Install all dependencies:
   
    ```
    npm install
    ```
    
-3. *Bootstrapping* is the process of provisioning resources for the AWS CDK before you can deploy AWS CDK apps into an AWS [environment](https://docs.aws.amazon.com/cdk/v2/guide/environments.html). *(An AWS environment is a combination of an AWS account and Region).* You only need to bootstrap once for your chosen region within your account. The presence of a `"CDKToolKit"` cloud-formation stack for that region will indicate bootstrapping has already occurred. To bootstrap, follow [these steps](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html#bootstrapping-howto). The simple bootstrapping command is:
+5. *Bootstrapping* is the process of provisioning resources for the AWS CDK before you can deploy AWS CDK apps into an AWS [environment](https://docs.aws.amazon.com/cdk/v2/guide/environments.html). *(An AWS environment is a combination of an AWS account and Region).* You only need to bootstrap once for your chosen region within your account. The presence of a `"CDKToolKit"` cloud-formation stack for that region will indicate bootstrapping has already occurred. To bootstrap, follow [these steps](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html#bootstrapping-howto). The simple bootstrapping command is:
 
    ```
    export AWS_PROFILE=my_named_profile
-   cdk bootstrap aws://[aws account ID]/us-east-1
+   cdk bootstrap aws://[aws account ID]/[aws region]
    ```
 
-5. [OPTIONAL] Run the [CDK synth command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-synth) command to generate the cloudformation template that will be used to create the stack:
+6. If they do not already exist in AWS Secrets Manager, create the secrets that will be referenced by the lambda@edge functions. Typically, secrets should survive independent of the stack that uses them, so they are created here outside of the stack deployment process.
+
+    1. Set the two secret values to complement the [Runtime Context](https://docs.aws.amazon.com/cdk/v2/guide/context.html) in a `./.env` file:
+        
+        - WORDPRESS_CONFIG_EXTRA: A JSON object whose content will be added dynamically to the wp-config.php file as documented [here](https://github.com/docker-library/wordpress/pull/142).
+            ```
+            WORDPRESS_CONFIG_EXTRA="define('MULTISITE', true);
+            define('SUBDOMAIN_INSTALL', false);
+            define( 'S3_UPLOADS_BUCKET', 'wordpress-protected-s3-assets-prod-assets/original_media');
+            define( 'S3_UPLOADS_REGION', 'us-east-1');
+            define( 'S3_UPLOADS_SECRET', 'awssecretkeyhere');
+            define( 'S3_UPLOADS_KEY', 'awsaccesskeyidhere');
+            define( 'S3_UPLOADS_OBJECT_ACL', null);
+            define( 'S3_UPLOADS_AUTOENABLE', true );
+            define( 'S3_UPLOADS_DISABLE_REPLACE_UPLOAD_URL', true);
+            define( 'ACCESS_RULES_TABLE', 'wordpress-protected-s3-assets-prod-AccessControl');
+            define( 'BU_INCLUDES_PATH', '/var/www/html/bu-includes' );"
+            ```
+
+        - DB_PASSWORD: The password for the wordpress database user.
+            ```
+            DB_PASSWORD="yourwordpressdbpasswordhere"
+            ```
+
+    2. Create the secrets in secrets manager. They will be referenced WordPress container definitions as environment variables.  
+        ```
+        export AWS_PROFILE=[your profile]
+        npm run create-secrets
+
+        # NOTE: You can override the Landscape tag value by passing a landscape=arg argument:
+        npm run create-secrets landscape=devl
+
+        # Or you can control the secret name entirely by passing a secret_name=arg argument:
+        npm run create-secrets secret_name=wp/devl 
+        ```
+
+    3. Replace the placeholder value in `./context/context.json` for the `SHIBBOTH.secret.secretArn` field with the [ARN](https://docs.aws.amazon.com/managedservices/latest/userguide/find-arn.html) of the secret you just created.
+
+    4. The `./context/context.json` file also has a S3PROXY.bucketUserSecretName property that contains the credentials needed by the S3 SigV4 proxy sidecar container to sign requests to the S3 Object Lambda Access Point. You can create that secret in a similar manner as above.
+    
+7. Modify the `./context/context.json` file.
+   This file will contain all parameters that the cdk will use when generating the Cloudformation template it later deploys. Most of these parameters correspond to something one might otherwise use as values being supplied to Cloudformation if it were being invoked directly, but they will appear "hard-coded" in the stack template. [From CDK docs on parameters](https://docs.aws.amazon.com/cdk/v2/guide/parameters.html):
+
+   > *In general, we recommend against using AWS CloudFormation parameters with the AWS CDK. The usual ways to pass values into AWS CDK apps are [context values](https://docs.aws.amazon.com/cdk/v2/guide/context.html) and environment variables. Because they are not available at synthesis time, parameter values cannot be easily used for flow control and other purposes in your CDK app.*
+
+   **[A Parameters Breakdown](./context/context.md)** is provided to help you understand what each parameter in the context.json file represents and how to set them appropriately for your deployment. 
+   
+   Alternatively, if you are deploying for Boston University, you can follow the **[BU Runbook](./docs/bu-runbook.md)**. It will focus you on a minor subset of parameters, and will steer you through a deployment specific to the Boston University environment and WordPress specifics only.
+
+8. [OPTIONAL] Run the [CDK synth command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-synth) command to generate the cloudformation template that will be used to create the stack:
 
    ```
    mkdir ./cdk.out 2> /dev/null
    npm run synth
    ```
 
-   *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a ./cdk.out/Stack.yaml.*
+   *NOTE: The synth command will create a .json file, but will also output yaml to stdout. The command above redirects that output to a ./cdk.out/synth.output.yaml.*
 
-3. Run the [CDK deploy command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-deploy) to create the stack:
+9. Deploy the stack from scratch with the [CDK deploy command](https://docs.aws.amazon.com/cdk/v2/guide/cli.html#cli-deploy):
+
+   ```
+   cdk deploy
+   ```
+
+   Alternatively, for preventing stack rollback on error and skipping prompts:
 
    ```
    npm run deploy
    ```
    
-7. Visit the wordpress site.
+10. Visit the wordpress site.
    The [ApplicationLoadBalancedFargateService construct](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns.ApplicationLoadBalancedFargateService.html) automatically produces 2 stack outputs. One is the alb public endpoint, and the other is the service endpoint. If you had included DNS parameters in the CDK app configuration to go through route53, the service endpoint would conform to that value, example:
 
    ```

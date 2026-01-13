@@ -77,7 +77,7 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
         // so the CloudWatch costs can be significantly higher.
         vpc
       }),
-      enableExecuteCommand: true,
+      enableExecuteCommand: true, // Enable shell access
       loadBalancerName: `${id}-fargate-alb`,
       desiredCount: 1,
       minHealthyPercent: 100,
@@ -128,9 +128,32 @@ export abstract class WordpressEcsConstruct extends AdaptableConstruct implement
       autoDeleteObjects: true
     }));
 
-    // Grant the task definition the ability to:
-    //   1) Pull docker images from the account ecr.
-    //   2) Run shell access to containers
+    /**
+     * Grant the task definition the ability to Pull images from the account ecr.
+     * 
+     * IMPORTANT! 
+     * While the execution role has a wildcard granting the task definition the 
+     * ability to attempt pulling images from any ECR specified, if the target image 
+     * is in an ECR repository in another account, that account must have a resource
+     * based policy on the repository granting pull access to this account:
+     * 
+     * {
+        "Version": "2012-10-17", 
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::PULLING-ACCOUNT-ID:root"
+            },
+            "Action": [
+              "ecr:GetDownloadUrlForLayer",
+              "ecr:BatchGetImage", 
+              "ecr:BatchCheckLayerAvailability"
+            ]
+          }
+        ]
+      }
+     */
     taskDefinition.addToExecutionRolePolicy(new PolicyStatement({
       effect: Effect.ALLOW,
       resources: [ '*' ],
