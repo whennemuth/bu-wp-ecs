@@ -3,13 +3,13 @@
 *.d.ts
 dist/*
 node_modules
+context/context.bkp.*
+
 
 # CDK asset staging directory
 .cdk.staging
 cdk.out
 cdk.context.json
-
-context/context.json
 
 # Ignore vscode workspace files (assumes files end in "workspace")
 *workspace
