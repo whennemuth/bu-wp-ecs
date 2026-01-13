@@ -50,6 +50,8 @@ export interface Tags {
   Service:   string;
   Function:  string;
   Landscape: string;
+  CostCenter?: string;
+  Ticket?: string;
 }
 
 export interface Wordpress {
