@@ -14,6 +14,7 @@ import { CustomResourceConfig } from 'aws-cdk-lib/custom-resources';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { SecretsManagerSecret } from '../lib/Secret';
 import { logHeader } from '../lib/Utils';
+import { BU_NameTagAspect, TaggingAspect } from '../lib/Tagging';
 
 export const getStackName = ():string => {
   return `${context.STACK_ID}-${context.TAGS.Landscape}`;
@@ -32,7 +33,7 @@ export const getStackName = ():string => {
   // Deconstruct the context
   const { 
     ACCOUNT:account, REGION:region, STACK_ID, DNS,
-    TAGS: { Service, Function, Landscape }, 
+    TAGS: { Service, Function, Landscape, CostCenter='', Ticket='' }, 
     PREFIXES: { wordpress:pfxWordpress, rds:pfxRds },
     WORDPRESS: { secret: { spSecretArn, wpSecretArn }}
   } = context as IContext;
@@ -81,7 +82,7 @@ export const getStackName = ():string => {
     stackName: getStackName(),
     description: 'Fargate ECS cluster for wordpress, s3proxy, and rds',
     env: { account, region },
-    tags: { Service, Function, Landscape }
+    tags: { Service, Function, Landscape, Ticket, CostCenter }
   }
 
   // Define properties
@@ -155,6 +156,21 @@ export const getStackName = ():string => {
 
   // Grant wordpress access to the database
   rds.addSecurityGroupIngressTo(ecs.securityGroup.securityGroupId);
+
+  // Apply standard tags to all resources in each stack
+  // SEE: https://github.com/bu-ist/buaws-istcloud-information/blob/main/aws-tagging-standard.md#costcenter
+  // NOTE: The CostCenter value is "AWS Word Press Migration to AWS", not "AWS WordPress Migration to AWS"
+  const standardTags = { 
+    Service, 
+    Function, 
+    Landscape, 
+    CostCenter, 
+    Ticket 
+  };
+  new TaggingAspect(stack, standardTags).applyTags({ 
+    aspect: new BU_NameTagAspect(standardTags) 
+  });
+  
 })();
 
    
