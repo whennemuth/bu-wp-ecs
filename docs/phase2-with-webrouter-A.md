@@ -1,6 +1,6 @@
 # Phase 2 (proposal 1) - Lambda@Edge shib auth integrated with distributions associated with Web-Router
 
-**Hurdle to this approach:** The shib auth npm package shoule be used in a viewer request edge lambda function, where EVERY request would be processed, despite what's in the cache. However, the 1 MB limit for viewer request lambda code is exceeded by the package, leaving the only choice of origin request lambda with a 50 MB code limit. In order to get the lambda hit for EVERY request, caching is disabled (cache hits bypass going to the origin - hence the lambda would not called).
+**Hurdle to this approach:** The shib auth npm package should be used in a viewer request edge lambda function, where EVERY request would be processed, despite what's in the cache. However, viewer request Lambda@Edge functions have a 40 KB request/response body size limit, whereas origin request functions support up to 1 MB. SAML assertions from IdPs are typically sent as POST requests with Base64-encoded XML in the body, which can easily exceed 40 KB (especially with multiple attributes, groups, or encryption). CloudFront would truncate bodies larger than 40 KB before they reach a viewer request Lambda, breaking SAML authentication. Therefore, origin request Lambda is required. In order to get the lambda hit for EVERY request, caching is disabled (cache hits bypass going to the origin - hence the lambda would not be called).
 DISABLING THE CLOUDFRONT DISTRIBUTION CACHE IS NOT AN OPTION FOR A PROD DEPLOYMENT.
 
 ```mermaid
