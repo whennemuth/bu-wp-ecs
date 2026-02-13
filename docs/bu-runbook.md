@@ -24,13 +24,13 @@ This runbook provides step-by-step instructions for deploying this AWS CDK app f
 
 8. You may have a custom domain set up as a hosted zone in Route 53 intended for requests to the cloudfront distribution created by the `bu-lambda-shibboleth` "companion" to this stack. If so, in `./context/context.json`, set the `DNS` properties accordingly:
    - `DNS.hostedZone`: Set this to the Route 53 hosted zone name (e.g., `example.edu`).
-   - `DNS.certificateArn`: Set this to the ARN of an existing ACM certificate in the same region where this stack will be deployed (`REGION` in `./context/context.json`) that covers the desired domain/subdomain (e.g., `wp.example.edu`). If the certificate does not exist yet, go to the ACM serice in the AWS management console and request it before proceeding.
-   - `DNS.subdomain`: Set this to the combined subdomain and hostedZone for the WordPress site (e.g., `wp.example.edu`). *NOTE: This domain should correspond to a CNAME record in the hosted zone that points to the cloudfront distribution created by the `bu-lambda-shibboleth` stack.*
+   - `DNS.certificateArn`: Set this to the ARN of an existing ACM certificate in the same region where this stack will be deployed (`REGION` in `./context/context.json`) that covers the desired domain/subdomain (e.g., `wp.example.edu`). If the certificate does not exist yet, go to the ACM service in the AWS management console and request it before proceeding, or use the AWS CLI - a full writeup on all of the CLI calls you may need to make for ACM certificate management can be found [here](./docs/acm.md).
+   - `DNS.subdomain`: Set this to the combined subdomain and hostedZone for the WordPress site (e.g., `wp.example.edu`). *NOTE: This domain should correspond to a CNAME or alias record in the hosted zone that points to the cloudfront distribution created by the `bu-lambda-shibboleth` stack.*
    - `DNS.cloudfront.distributionDomainName`: Set this to the domain name of the cloudfront distribution created by the `bu-lambda-shibboleth` stack (e.g., `d123abcd.cloudfront.net`). This is needed so that the ALB can whitelist requests coming from the cloudfront distribution. You can find this value in the outputs of the `bu-lambda-shibboleth` stack in the AWS Cloudformation console.
 
-   NOTE: If you do not have a custom domain set up, blank out both of these properties as empty strings (`""`).
+   NOTE: If you do not have a custom domain set up in Route 53, blank out both of these properties as empty strings (`""`).
 
-   NOTE: If you have a custom domain set up, but have no matching certificate in ACM, go to the ACM serice in the AWS management console in us-east-1 and request it before proceeding.
+   NOTE: If you have a custom domain set up in Route 53, but have no matching certificate in ACM, go to the ACM serice in the AWS management console in the region where the ALB will be deployed and request it before proceeding.
 
 9. Secrets Manager:
    - In `./context/context.json`, replace the placeholder value for the `WORDPRESS.secret.wpSecretArn` as per step 6 in the **[Main Readme File](../README.md)**.
