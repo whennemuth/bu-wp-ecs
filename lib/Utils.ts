@@ -1,3 +1,5 @@
+import { IContext } from "../context/IContext";
+
 const isBlank = (s:string|null|undefined):boolean => {
   return s === undefined || s === null || `${s}`.trim() == '';
 }
@@ -17,4 +19,12 @@ export const logHeader = (header:string) => {
   console.log('\n' + '='.repeat(80));
   console.log(`${spacer}${header}`);
   console.log('='.repeat(80));
+}
+
+/**
+ * @returns The name of the stack
+ */
+export const getStackName = (context:IContext):string => {
+  const { STACK_ID, TAGS: { Landscape } } = context;
+  return `${STACK_ID}-${Landscape}`;
 }

@@ -1,9 +1,11 @@
 import { Stack } from "aws-cdk-lib";
 import { Certificate, ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { ApplicationLoadBalancedFargateServiceProps, ApplicationLoadBalancedServiceRecordType } from "aws-cdk-lib/aws-ecs-patterns";
-import { ARecord, HostedZone, IHostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
-import { CloudfrontWordpressEcsConstruct } from "./WordpressBehindCloudfront";
+import { HostedZone, IHostedZone } from "aws-cdk-lib/aws-route53";
+import { Route53HostedZone } from '../../bin/Route53';
 import { WordpressEcsConstruct } from "../Wordpress";
+import { CloudfrontWordpressEcsConstruct } from "./WordpressBehindCloudfront";
+
 
 /**
  * This construct applies an A record for a subdomain to an existing hosted zone targeting an
@@ -30,8 +32,17 @@ export class HostedZoneForCloudfrontWordpressEcsConstruct extends CloudfrontWord
   private getDomainZone(): IHostedZone {
     const { domainZone } = this.props;
     if(domainZone) return domainZone;
-    const { context: { DNS: { hostedZone:domainName = '' } = {} } } = this;
-    this.props.domainZone = HostedZone.fromLookup(this, 'Zone', { domainName }) satisfies IHostedZone;
+    const { context: { DNS: { hostedZone:domainName = '', crossAccountHostedZoneId } = {} } } = this;
+    if( crossAccountHostedZoneId ) {
+      this.props.domainZone = HostedZone.fromHostedZoneId(
+        this, 
+        'CrossAccountZone', 
+        crossAccountHostedZoneId  // Zone ID from the other account
+      ) satisfies IHostedZone;
+    }
+    else {
+      this.props.domainZone = HostedZone.fromLookup(this, 'Zone', { domainName }) satisfies IHostedZone;
+    }
     return this.props.domainZone;
   }
 
@@ -45,7 +56,7 @@ export class HostedZoneForCloudfrontWordpressEcsConstruct extends CloudfrontWord
     // Unpack needed values
     const { 
       id, getDomainZone, context: { 
-        DNS: { certificateARN:certArn = '' } = {}, 
+        DNS: { certificateARN:certArn = '', subdomain } = {}, 
         STACK_ID, TAGS: { Landscape } 
       } 
     } = this;
@@ -57,16 +68,24 @@ export class HostedZoneForCloudfrontWordpressEcsConstruct extends CloudfrontWord
     const domainZone = getDomainZone();
     const certificate = Certificate.fromCertificateArn(this, `${id}-acm-cert`, certArn) satisfies ICertificate;
 
+    // Prevent the CDK from automatically adding an A record to the hosted zone for the ALB.
+    const recordType = ApplicationLoadBalancedServiceRecordType.NONE; 
+
     Object.assign(this.fargateServiceProps, { 
       certificate, 
-      domainName: `${STACK_ID}.${Landscape}.${domainZone}`, 
-      domainZone, 
       redirectHTTP: true,
       // Prevent the CDK from automatically adding an A record to the hosted zone for the ALB.
-      recordType: ApplicationLoadBalancedServiceRecordType.NONE,
+      recordType: recordType,
       publicLoadBalancer: true,
       loadBalancer: this.alb,
     } as ApplicationLoadBalancedFargateServiceProps);
+
+    if(subdomain) {
+      Object.assign(this.fargateServiceProps, {
+        domainZone,
+        domainName: subdomain
+      } as ApplicationLoadBalancedFargateServiceProps);
+    }
   }
 
   adaptResources(): void {
@@ -93,17 +112,13 @@ export class HostedZoneForCloudfrontWordpressEcsConstruct extends CloudfrontWord
       return;
     }
 
-    // Create the A record that points directly to the CloudFront distribution domain
-    new ARecord(this, `${id}-cloudfront-alias-record`, {
-      zone: domainZone,
-      recordName: subdomain,
-      target: RecordTarget.fromAlias({
-        bind: () => ({
-          dnsName: distributionDomainName,
-          hostedZoneId: 'Z2FDTNDATAQYW2' // Standard global CloudFront hosted zone ID
-        })
-      }),
-      comment: `ALIAS record for ${subdomain} pointing to CloudFront distribution ${distributionDomainName}`
+    const route53HostedZone: Route53HostedZone = new Route53HostedZone(this.context);
+    route53HostedZone.createARecord({
+      scope: this,
+      id: `${id}-cloudfront-alias-record`,
+      distributionDomainName,
+      hostedZone,
+      recordName: subdomain ?? ''
     });
   }
 }

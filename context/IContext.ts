@@ -16,11 +16,12 @@ export interface IContext {
 }
 
 export interface DNS {
-  hostedZone:     string;
-  subdomain?:      string;
-  certificateARN: string;
-  cloudfront?:    Cloudfront;
-  includeRDS:     boolean;
+  hostedZone:                string;
+  crossAccountHostedZoneId?: string;
+  subdomain?:                string;
+  certificateARN:            string;
+  cloudfront?:               Cloudfront;
+  includeRDS:                boolean;
 }
 
 export interface Cloudfront {
