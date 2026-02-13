@@ -1,14 +1,20 @@
-import { CreateSecretCommand, CreateSecretCommandOutput, GetSecretValueCommand, GetSecretValueCommandOutput, SecretsManagerClient, UpdateSecretCommand, UpdateSecretCommandOutput } from "@aws-sdk/client-secrets-manager";
+import { CreateSecretCommand, CreateSecretCommandOutput, GetSecretValueCommand, GetSecretValueCommandOutput, SecretsManagerClient, UpdateSecretCommand, UpdateSecretCommandOutput, Tag } from "@aws-sdk/client-secrets-manager";
 import { SecretFieldNames } from "../context/IContext";
 
+export type SecretsManagerSecretParms = {
+  secretName: string,
+  fldNames: SecretFieldNames,
+  client?: SecretsManagerClient,
+  region?: string,
+  description?: string,
+  Tags?: Tag[]
+}
 export class SecretsManagerSecret {
 
   private kvPairs: Record<string, string> = {};
   private lookupResult: string | undefined;
 
-  constructor( private parms: { 
-    secretName: string, description?: string, fldNames: SecretFieldNames, client?: SecretsManagerClient, region?: string 
-  }) {
+  constructor( private parms: SecretsManagerSecretParms) {
     const { client, region:_region } = this.parms;
     if( ! client ) {
       const { REGION, AWS_REGION } = process.env;
@@ -39,10 +45,15 @@ export class SecretsManagerSecret {
   private create = async (): Promise<CreateSecretCommandOutput> => {
     const {
       getSecretValueJson,
-      parms: { secretName:Name, client = { send: () => { throw new Error('Client not initialized'); } } } 
+      parms: { 
+        secretName:Name, description:Description, Tags=[],
+        client = { send: () => { throw new Error('Client not initialized'); } } 
+      } 
     } = this;
     console.log(`Creating secret ${Name}...`);
-    const command = new CreateSecretCommand({ Name, SecretString: await getSecretValueJson() });
+    const command = new CreateSecretCommand({ 
+      Name, Description, SecretString: await getSecretValueJson(), Tags
+    });
     return await client.send(command);
   }
 
@@ -53,10 +64,15 @@ export class SecretsManagerSecret {
   private update = async (): Promise<UpdateSecretCommandOutput> => {
     const {
       getSecretValueJson,
-      parms: { secretName:Name, client = { send: () => { throw new Error('Client not initialized'); } } } 
+      parms: { 
+        secretName:Name, description:Description,
+        client = { send: () => { throw new Error('Client not initialized'); } } 
+      } 
     } = this;
     console.log(`Updating secret ${Name}...`);
-    const command = new UpdateSecretCommand({ SecretId: Name, SecretString: await getSecretValueJson() });
+    const command = new UpdateSecretCommand({ 
+      SecretId: Name, SecretString: await getSecretValueJson(), Description 
+    });
     return await client.send(command);
   }
 
@@ -90,6 +106,8 @@ export class SecretsManagerSecret {
       throw error;
     }
     if (response.SecretString) {
+      console.log(`Secret ${Name} retrieved successfully.`);
+      
       // Cache the result
       this.lookupResult = response.SecretString;
 
