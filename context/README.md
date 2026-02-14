@@ -4,7 +4,11 @@ The following are parameters for the CDK deployment. Most of them can be regarde
 
 ### contexts/context.json
 
-This file defines all parameters that comprise the [context](https://docs.aws.amazon.com/cdk/v2/guide/context.html) for the stack. Combined, the majority of them define a stack that will include:
+This file defines all parameters that comprise the [context](https://docs.aws.amazon.com/cdk/v2/guide/context.html) for the stack.
+
+***NOTE**: After deployment, the ContextLog construct automatically stores a copy of the context.json file used for the deployment in an S3 bucket. This allows you to retrieve the exact configuration that was used to create or update your stack, which is useful for auditing, troubleshooting, or reproducing deployments. The bucket name follows the pattern `{stack-name}-context-config-{account-id}-{region}` and contains the context file at the root level.*
+
+Combined, the majority of these parameters define a stack that will include:
 
 1. A [Fargate service](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html)
 2. A [MySQL RDS database](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_MySQL.html)

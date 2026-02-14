@@ -6,6 +6,7 @@ import { CustomResourceConfig } from 'aws-cdk-lib/custom-resources';
 import { IContext, SecretFieldNames } from '../context/IContext';
 import * as ctx from '../context/context.json';
 import { checkIamServerCertificate } from '../lib/Certificate';
+import { ContextLog } from '../context/ContextLog';
 import { BuWordpressRdsConstruct as RdsConstruct } from '../lib/Rds';
 import { SecretsManagerSecret } from '../lib/Secret';
 import { BU_NameTagAspect, TaggingAspect } from '../lib/Tagging';
@@ -172,6 +173,12 @@ const ignoreRoute53 = async (context:IContext): Promise<boolean> => {
 
   // Grant wordpress access to the database
   rds.addSecurityGroupIngressTo(ecs.securityGroup.securityGroupId);
+      
+  // Store the context configuration using ContextLog (S3 storage)
+  // NOTE: If you want to change the id of this construct or name of the bucket, you must first
+  // redeploy with this code commented out (to remove it), then uncomment and redeploy again 
+  // to avoid cloudformation errors.
+  new ContextLog(stack, `${STACK_ID}-context`, { context, stackName:getStackName(context) });
 
   // Apply standard tags to all resources in each stack
   // SEE: https://github.com/bu-ist/buaws-istcloud-information/blob/main/aws-tagging-standard.md#costcenter
