@@ -72,6 +72,7 @@ export interface WordpressEnv {
   dbName?:           string;
   dbPort?:           string;
   debug?:            any;
+  environmentType?:  string;
 }
 
 export interface WordpressSecret {

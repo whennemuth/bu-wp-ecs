@@ -60,6 +60,7 @@ export class WordpressAppContainerDefConfig {
       dbName:WORDPRESS_DB_NAME=DEFAULT_DB_NAME, 
       dbHost:WORDPRESS_DB_HOST=getRdsHost(),
       debug='0', // Default to debug off
+      environmentType:WP_ENVIRONMENT_TYPE='production',
     } = wp.env;
     const WORDPRESS_DEBUG = `${debug}`;
     const WP_CLI_ALLOW_ROOT = 'true';
@@ -89,7 +90,8 @@ export class WordpressAppContainerDefConfig {
       }),
       environment: { 
         SP_ENTITY_ID, IDP_ENTITY_ID, TZ, S3PROXY_HOST, WORDPRESS_DB_HOST,
-        WORDPRESS_DB_USER, WORDPRESS_DB_NAME, WORDPRESS_DEBUG, WP_CLI_ALLOW_ROOT
+        WORDPRESS_DB_USER, WORDPRESS_DB_NAME, WORDPRESS_DEBUG, WP_CLI_ALLOW_ROOT,
+        WP_ENVIRONMENT_TYPE
       },
       // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html
       secrets: {
